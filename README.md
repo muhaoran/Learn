@@ -21,17 +21,25 @@
 
 ## 🚀 快速开始
 
-### 5 分钟了解 ChatBI
+### 🎯 第一次使用？从这里开始！
+
+👉 **[START_HERE.md](START_HERE.md)** - 根据你的角色选择阅读路径
+
+### 📖 5 分钟了解 ChatBI
 
 阅读 [GETTING_STARTED.md](GETTING_STARTED.md)
 
-### 完整文档索引
+### 📚 完整文档索引
 
 查看 [INDEX.md](INDEX.md) - 快速找到你需要的文档
 
-### 系统总览（一页纸）
+### 📊 系统总览（一页纸）
 
 阅读 [docs/system_overview.md](docs/system_overview.md)
+
+### 🎨 可视化理解
+
+阅读 [VISUAL_GUIDE.md](VISUAL_GUIDE.md) - 用图表理解系统
 
 ---
 
