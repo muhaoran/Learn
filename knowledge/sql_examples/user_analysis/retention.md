@@ -70,7 +70,7 @@
 ### 关键技术点
 
 - **LEFT JOIN**: 必须使用 LEFT JOIN，不能用 INNER JOIN（否则会遗漏未留存用户）
-- **时间计算**: D1 = D0 + 1 天
+- **时间计算**: D1 = D0 + 1 天（使用 Trino 的 date_add 函数）
 - **去重**: 两边都要 DISTINCT
 
 ---
@@ -78,19 +78,19 @@
 ## SQL 语句
 
 ```sql
--- 计算 2024 年 1 月新用户的次日留存率
+-- 计算 2024 年 1 月新用户的次日留存率（Trino 语法）
 -- 按注册日期分组展示
 
 WITH new_users AS (
     -- D0: 获取 1 月份的新注册用户
     SELECT 
         user_id,
-        DATE(register_time) as register_date
+        cast(register_time as date) as register_date
     FROM 
         dwd_user_register
     WHERE 
-        register_date >= '2024-01-01'
-        AND register_date < '2024-02-01'
+        register_date >= date '2024-01-01'
+        AND register_date < date '2024-02-01'
 ),
 retention_users AS (
     -- D1: 获取次日活跃的用户
@@ -103,14 +103,14 @@ retention_users AS (
         dwd_user_behavior ub
     ON 
         nu.user_id = ub.user_id
-        -- 关键: D1 = D0 + 1 天
-        AND ub.date = DATE_ADD(nu.register_date, INTERVAL 1 DAY)
+        -- 关键: D1 = D0 + 1 天（Trino 语法）
+        AND ub.date = date_add('day', 1, nu.register_date)
 )
 SELECT 
     nu.register_date,
     COUNT(DISTINCT nu.user_id) as new_users_count,
     COUNT(DISTINCT ru.user_id) as retention_users_count,
-    ROUND(COUNT(DISTINCT ru.user_id) * 100.0 / COUNT(DISTINCT nu.user_id), 2) as retention_rate
+    ROUND(CAST(COUNT(DISTINCT ru.user_id) AS DOUBLE) * 100.0 / COUNT(DISTINCT nu.user_id), 2) as retention_rate
 FROM 
     new_users nu
 LEFT JOIN 

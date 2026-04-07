@@ -66,22 +66,22 @@
 ### 关键技术点
 
 - 使用汇总表而非明细表，性能更好
-- 时间范围: `>= DATE_SUB(CURRENT_DATE(), 6)`
+- 时间范围: `>= date_add('day', -6, current_date)` (Trino 语法)
 
 ---
 
 ## SQL 语句
 
 ```sql
--- 查询最近 7 天的 DAU 趋势
+-- 查询最近 7 天的 DAU 趋势（Trino 语法）
 SELECT 
     date,
     COUNT(DISTINCT user_id) as dau
 FROM 
     dws_user_daily
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
-    AND date <= CURRENT_DATE()
+    date >= date_add('day', -6, current_date)
+    AND date <= current_date
     AND is_active = 1
 GROUP BY 
     date
@@ -92,15 +92,15 @@ ORDER BY
 ### 简化版本（如果表中已有 DAU 字段）
 
 ```sql
--- 如果 dws_user_daily 表中已经有预计算的 dau 字段
+-- 如果 dws_user_daily 表中已经有预计算的 dau 字段（Trino 语法）
 SELECT 
     date,
     dau
 FROM 
     dws_user_daily
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
-    AND date <= CURRENT_DATE()
+    date >= date_add('day', -6, current_date)
+    AND date <= current_date
 ORDER BY 
     date;
 ```
@@ -147,7 +147,7 @@ ORDER BY
 
 **需求变化**: 需要看各渠道的 DAU
 
-**SQL 调整**:
+**SQL 调整** (Trino 语法):
 ```sql
 SELECT 
     date,
@@ -156,8 +156,8 @@ SELECT
 FROM 
     dws_user_daily
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
-    AND date <= CURRENT_DATE()
+    date >= date_add('day', -6, current_date)
+    AND date <= current_date
     AND is_active = 1
 GROUP BY 
     date,
@@ -171,7 +171,7 @@ ORDER BY
 
 **需求变化**: 需要与去年同期对比
 
-**SQL 调整**:
+**SQL 调整** (Trino 语法):
 ```sql
 SELECT 
     date,
@@ -181,10 +181,10 @@ FROM
 WHERE 
     (
         -- 今年最近 7 天
-        (date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY) AND date <= CURRENT_DATE())
+        (date >= date_add('day', -6, current_date) AND date <= current_date)
         OR
         -- 去年同期
-        (date >= DATE_SUB(CURRENT_DATE(), INTERVAL 371 DAY) AND date <= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY))
+        (date >= date_add('day', -371, current_date) AND date <= date_add('day', -365, current_date))
     )
     AND is_active = 1
 GROUP BY 
@@ -197,11 +197,11 @@ ORDER BY
 
 **需求变化**: 只看过去 7 个完整的自然日
 
-**SQL 调整**:
+**SQL 调整** (Trino 语法):
 ```sql
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
-    AND date < CURRENT_DATE()  -- 不含今天
+    date >= date_add('day', -7, current_date)
+    AND date < current_date  -- 不含今天
 ```
 
 ---

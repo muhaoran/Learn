@@ -4,6 +4,14 @@
 
 ---
 
+## 重要说明
+
+**数据库类型**: Trino
+
+**所有 SQL 必须使用 Trino 语法规范**，不能使用 MySQL、Hive、Presto 等其他数据库的语法。
+
+---
+
 ## 一、性能优化
 
 ### 1.1 必须使用分区字段
@@ -309,59 +317,170 @@ SELECT password, id_card FROM ...
 
 ---
 
-## 五、数据库特定语法
+## 五、Trino 语法规范
 
-### 5.1 日期函数
+### 5.1 日期函数（Trino）
 
-**请根据雪球使用的数据库类型（MySQL/PostgreSQL/Hive/ClickHouse 等）补充具体语法**
-
-#### MySQL 示例
+**重要**: 必须使用 Trino 的日期函数，不能使用 MySQL/Hive 等其他语法。
 
 ```sql
--- 当前日期
-CURRENT_DATE() 或 CURDATE()
+-- ✅ 当前日期（Trino）
+current_date
 
--- 日期加减
-DATE_ADD(date, INTERVAL 1 DAY)
-DATE_SUB(date, INTERVAL 1 DAY)
+-- ✅ 日期加减（Trino）
+date_add('day', 1, date_column)           -- 加 1 天
+date_add('day', -1, date_column)          -- 减 1 天
+date_add('month', 1, date_column)         -- 加 1 月
+date_add('year', 1, date_column)          -- 加 1 年
 
--- 日期格式化
-DATE_FORMAT(date, '%Y-%m-%d')
+-- ✅ 日期差值（Trino）
+date_diff('day', date1, date2)            -- 计算两个日期相差的天数
 
--- 日期截取
-DATE(timestamp)
+-- ✅ 日期格式化（Trino）
+date_format(date_column, '%Y-%m-%d')      -- 格式化为字符串
+format_datetime(timestamp_col, 'yyyy-MM-dd HH:mm:ss')
+
+-- ✅ 字符串转日期（Trino）
+date_parse('2024-01-01', '%Y-%m-%d')      -- 解析字符串为日期
+cast('2024-01-01' as date)                -- 类型转换
+
+-- ✅ 提取日期部分（Trino）
+year(date_column)                         -- 提取年份
+month(date_column)                        -- 提取月份
+day(date_column)                          -- 提取日期
+day_of_week(date_column)                  -- 提取星期几（1-7）
+day_of_year(date_column)                  -- 提取一年中的第几天
+
+-- ❌ 错误：不要使用 MySQL 语法
+DATE_ADD(date, INTERVAL 1 DAY)            -- MySQL 语法，禁止使用
+DATE_SUB(date, INTERVAL 1 DAY)            -- MySQL 语法，禁止使用
+CURDATE()                                 -- MySQL 语法，禁止使用
+CURRENT_DATE()                            -- MySQL 语法，禁止使用
+
+-- ❌ 错误：不要使用 Hive 语法
+DATE_ADD(date, 1)                         -- Hive 语法，禁止使用
+DATE_SUB(date, 1)                         -- Hive 语法，禁止使用
+datediff(date1, date2)                    -- Hive 语法，禁止使用
 ```
 
-#### Hive 示例
+### 5.2 字符串函数（Trino）
 
 ```sql
--- 当前日期
-CURRENT_DATE
+-- ✅ 字符串连接（Trino）
+concat(str1, str2, str3)                  -- 连接多个字符串
+str1 || str2 || str3                      -- 使用 || 操作符
 
--- 日期加减
-DATE_ADD(date, 1)
-DATE_SUB(date, 1)
+-- ✅ 字符串截取（Trino）
+substr(str, start, length)                -- 截取子串（从 1 开始）
+substring(str, start, length)             -- 同上
 
--- 日期格式化
-FROM_UNIXTIME(unix_timestamp, 'yyyy-MM-dd')
+-- ✅ 字符串长度（Trino）
+length(str)                               -- 字符串长度
+
+-- ✅ 字符串查找和替换（Trino）
+strpos(str, substring)                    -- 查找子串位置（从 1 开始）
+replace(str, search, replace)             -- 替换字符串
+
+-- ✅ 大小写转换（Trino）
+upper(str)                                -- 转大写
+lower(str)                                -- 转小写
+
+-- ✅ 去除空格（Trino）
+trim(str)                                 -- 去除两端空格
+ltrim(str)                                -- 去除左侧空格
+rtrim(str)                                -- 去除右侧空格
+
+-- ✅ 正则表达式（Trino）
+regexp_like(str, pattern)                 -- 正则匹配
+regexp_extract(str, pattern, group)       -- 正则提取
+regexp_replace(str, pattern, replacement) -- 正则替换
+
+-- ✅ 字符串分割（Trino）
+split(str, delimiter)                     -- 分割字符串为数组
+split_part(str, delimiter, index)         -- 获取分割后的第 N 部分
 ```
 
-### 5.2 字符串函数
-
-[待补充常用字符串函数]
-
-### 5.3 窗口函数
+### 5.3 聚合函数（Trino）
 
 ```sql
--- 排名
-ROW_NUMBER() OVER (PARTITION BY field1 ORDER BY field2 DESC)
+-- ✅ 基础聚合（Trino）
+count(*)                                  -- 计数
+count(distinct column)                    -- 去重计数
+sum(column)                               -- 求和
+avg(column)                               -- 平均值
+max(column)                               -- 最大值
+min(column)                               -- 最小值
 
--- 累计
-SUM(field) OVER (PARTITION BY field1 ORDER BY field2)
+-- ✅ 近似聚合（Trino，性能更好）
+approx_distinct(column)                   -- 近似去重计数（大数据量时推荐）
+approx_percentile(column, 0.5)            -- 近似中位数
 
--- 同比/环比
-LAG(field, 1) OVER (ORDER BY date)
-LEAD(field, 1) OVER (ORDER BY date)
+-- ✅ 数组聚合（Trino）
+array_agg(column)                         -- 聚合为数组
+```
+
+### 5.4 窗口函数（Trino）
+
+```sql
+-- ✅ 排名函数（Trino）
+row_number() over (partition by field1 order by field2 desc)  -- 行号
+rank() over (partition by field1 order by field2 desc)         -- 排名（有并列）
+dense_rank() over (partition by field1 order by field2 desc)   -- 密集排名
+
+-- ✅ 累计函数（Trino）
+sum(field) over (partition by field1 order by field2)          -- 累计求和
+avg(field) over (partition by field1 order by field2)          -- 移动平均
+
+-- ✅ 偏移函数（Trino）
+lag(field, 1) over (order by date)                             -- 上一行
+lead(field, 1) over (order by date)                            -- 下一行
+first_value(field) over (partition by field1 order by field2)  -- 第一个值
+last_value(field) over (partition by field1 order by field2)   -- 最后一个值
+```
+
+### 5.5 类型转换（Trino）
+
+```sql
+-- ✅ 类型转换（Trino）
+cast(column as bigint)                    -- 转换为整数
+cast(column as double)                    -- 转换为浮点数
+cast(column as varchar)                   -- 转换为字符串
+cast(column as date)                      -- 转换为日期
+cast(column as timestamp)                 -- 转换为时间戳
+
+-- ✅ 安全类型转换（Trino）
+try_cast(column as bigint)                -- 转换失败返回 NULL
+```
+
+### 5.6 条件函数（Trino）
+
+```sql
+-- ✅ CASE 表达式（Trino）
+case 
+    when condition1 then result1
+    when condition2 then result2
+    else result3
+end
+
+-- ✅ IF 函数（Trino）
+if(condition, true_value, false_value)
+
+-- ✅ COALESCE（Trino）
+coalesce(column1, column2, default_value) -- 返回第一个非 NULL 值
+
+-- ✅ NULLIF（Trino）
+nullif(column1, column2)                  -- 如果相等返回 NULL
+```
+
+### 5.7 数组函数（Trino）
+
+```sql
+-- ✅ 数组操作（Trino）
+array[1, 2, 3]                            -- 创建数组
+array_length(array_column)                -- 数组长度
+contains(array_column, value)             -- 是否包含元素
+array_distinct(array_column)              -- 数组去重
+array_join(array_column, delimiter)       -- 数组转字符串
 ```
 
 ---
@@ -427,10 +546,20 @@ WHERE b.date = DATE_ADD(r.register_date, INTERVAL 1 DAY)
 ## 八、数据库配置
 
 ### 数据库类型
-[待补充: MySQL/PostgreSQL/Hive/ClickHouse/Presto 等]
+
+**Trino** - 分布式 SQL 查询引擎
+
+### Trino 语法要点
+
+1. **日期函数**: 使用 `date_add('day', n, date)` 而不是 `DATE_ADD(date, INTERVAL n DAY)`
+2. **当前日期**: 使用 `current_date` 而不是 `CURDATE()` 或 `CURRENT_DATE()`
+3. **日期差值**: 使用 `date_diff('day', date1, date2)` 而不是 `DATEDIFF(date1, date2)`
+4. **字符串连接**: 使用 `concat()` 或 `||` 操作符
+5. **类型转换**: 使用 `cast(column as type)` 或 `try_cast(column as type)`
+6. **近似聚合**: 大数据量时使用 `approx_distinct()` 提升性能
 
 ### 连接信息
-[待补充: 如何连接数据库]
+[待补充: 如何连接 Trino 数据库]
 
 ### 权限说明
 [待补充: 权限范围，哪些表可以访问]

@@ -10,6 +10,7 @@
 2. **主动澄清**: 遇到模糊需求，必须主动提问澄清
 3. **知识驱动**: 严格基于知识库生成 SQL，不能臆测
 4. **可解释性**: 清晰说明 SQL 的逻辑和计算方式
+5. **Trino 语法**: 所有 SQL 必须使用 Trino 语法规范
 
 ## 工作流程
 
@@ -42,14 +43,18 @@
 
 ### SQL 生成
 
+- ✅ **必须使用 Trino 语法**（不是 MySQL/Hive/Presto 等其他语法）
 - ✅ 优先使用汇总表（ADS/DWS）而非明细表（ODS/DWD）
 - ✅ 必须添加清晰的注释
 - ✅ 使用 CTE 提高复杂 SQL 的可读性
 - ✅ WHERE 条件必须包含分区字段（如 date）
 - ✅ 正确处理 NULL 值
 - ✅ 使用正确的去重逻辑（DISTINCT 或 GROUP BY）
+- ✅ 使用 Trino 的日期函数（如 date_add、date_diff、current_date）
+- ✅ 使用 Trino 的字符串函数（如 concat、substr、regexp_like）
 - ❌ 不能生成可能导致全表扫描的 SQL
 - ❌ 不能使用 SELECT *
+- ❌ 不能使用非 Trino 语法（如 MySQL 的 DATE_SUB、Hive 的 datediff）
 
 ### SQL 验证
 

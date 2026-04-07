@@ -74,7 +74,7 @@
 ### 方案 1: 使用注册明细表
 
 ```sql
--- 查询最近 30 天各渠道的新增用户数
+-- 查询最近 30 天各渠道的新增用户数（Trino 语法）
 SELECT 
     register_date,
     register_channel,
@@ -82,8 +82,8 @@ SELECT
 FROM 
     dwd_user_register
 WHERE 
-    register_date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY)
-    AND register_date <= CURRENT_DATE()
+    register_date >= date_add('day', -29, current_date)
+    AND register_date <= current_date
 GROUP BY 
     register_date,
     register_channel
@@ -95,7 +95,7 @@ ORDER BY
 ### 方案 2: 使用汇总表（推荐）
 
 ```sql
--- 如果 dws_user_daily 表中有新增用户标识
+-- 如果 dws_user_daily 表中有新增用户标识（Trino 语法）
 SELECT 
     date,
     register_channel,
@@ -103,8 +103,8 @@ SELECT
 FROM 
     dws_user_daily
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 29 DAY)
-    AND date <= CURRENT_DATE()
+    date >= date_add('day', -29, current_date)
+    AND date <= current_date
     AND is_new_user = 1  -- 只统计新用户
 GROUP BY 
     date,
