@@ -1,0 +1,17 @@
+# 数据资产相关原始资料
+
+将数据资产相关的原始资料放在这里，例如：
+- 数据字典（Excel）
+- 表结构说明（Excel、Word）
+- DDL 建表语句（SQL）
+- 表关系图（图片）
+- 元数据配置（JSON）
+- 数据样例（CSV）
+
+支持的文件格式：
+- .xlsx, .xls (Excel)
+- .sql (SQL)
+- .png, .jpg (图片)
+- .json (JSON)
+- .csv (CSV)
+- .md (Markdown)
