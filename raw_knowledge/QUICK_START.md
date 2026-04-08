@@ -132,6 +132,51 @@ AI 会：
 
 ## 💡 实际示例
 
+### 示例 0: 我有一份混合内容的文档 ⭐最常见
+
+**你的文件**：`数据需求文档.docx`
+
+**内容混合了多种类型**：
+```
+第一部分：业务术语
+- DAU: 日活跃用户数
+- MAU: 月活跃用户数
+
+第二部分：数据表
+- 用户行为表（user_behavior）
+  字段：user_id, behavior_type, behavior_time
+
+第三部分：SQL 需求
+- 查询昨天的 DAU
+SELECT COUNT(DISTINCT user_id) FROM ...
+```
+
+**操作步骤**：
+
+1. 直接放到 `raw_knowledge/mixed/数据需求文档.docx`
+
+2. 在 Cursor 中输入：
+   ```
+   请处理 raw_knowledge/mixed/数据需求文档.docx
+   ```
+
+3. AI 会自动：
+   - 识别出 3 种类型的内容
+   - 第一部分是业务术语 → 生成 `glossary.md`
+   - 第二部分是数据表 → 生成表文档
+   - 第三部分是 SQL → 生成 SQL 案例文档（转为 Trino 语法）
+   - 总共生成 3+ 个知识库文件
+
+4. 完成！一个文件自动拆分成多个知识库文档
+
+**AI 反馈**：
+```markdown
+✅ 识别到 3 种类型的内容：
+1. 业务术语: 2 个 → knowledge/business/glossary.md
+2. 数据表: 1 个 → knowledge/data_assets/tables/dwd/user_behavior.md
+3. SQL 查询: 1 个 → knowledge/sql_examples/user_analysis/dau.md
+```
+
 ### 示例 1: 我有一份术语表 Excel
 
 **你的文件**：`雪球业务术语.xlsx`
