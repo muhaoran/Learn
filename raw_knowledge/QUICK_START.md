@@ -24,42 +24,66 @@
 
 ### 步骤 1: 准备原始资料
 
-将你的原始资料放到对应的文件夹：
+**最简单的方式：直接放到 `mixed/` 文件夹** ⭐推荐
 
 ```
 raw_knowledge/
-├── business/          👈 业务相关（术语、指标、规则）
-├── data_assets/       👈 数据相关（表结构、字段说明）
-└── sql_examples/      👈 SQL 相关（查询语句、需求文档）
+└── mixed/          👈 任何类型的文件都放这里！
 ```
 
-**示例**：
-- 有一份术语表 Excel → 放到 `raw_knowledge/business/`
-- 有一份数据字典 → 放到 `raw_knowledge/data_assets/`
-- 有一些常用 SQL → 放到 `raw_knowledge/sql_examples/`
+**为什么推荐放到 `mixed/`？**
+- ✅ 不需要判断文件是什么类型
+- ✅ 文件可以包含多种内容（术语+表结构+SQL 混合）
+- ✅ AI 会自动识别和分类
+- ✅ 最简单、最省心！
+
+**其他可选文件夹**（如果你很明确是单一类型）：
+```
+raw_knowledge/
+├── business/          👈 纯业务相关（术语、指标、规则）
+├── data_assets/       👈 纯数据相关（表结构、字段说明）
+└── sql_examples/      👈 纯 SQL 相关（查询语句、需求文档）
+```
+
+**💡 建议**：
+- 不确定？直接放 `mixed/`
+- 文件内容混合？直接放 `mixed/`
+- 想省事？直接放 `mixed/`
 
 ### 步骤 2: 告诉 AI 处理
 
 在 Cursor 中输入：
 
 ```
-请处理 raw_knowledge/business/术语表.xlsx
+请处理 raw_knowledge/mixed/xxx.docx
 ```
 
 或者：
 
 ```
-我在 raw_knowledge/ 中放了新资料，请帮我处理
+我在 raw_knowledge/mixed/ 中放了新资料，请帮我处理
+```
+
+或者更简单：
+
+```
+帮我处理 raw_knowledge/ 下的新文件
 ```
 
 ### 步骤 3: 检查结果
 
 AI 会：
 1. ✅ 读取你的原始资料
-2. ✅ 自动提取关键信息
-3. ✅ 转换为标准的知识库格式
-4. ✅ 生成对应的 `.md` 文件到 `knowledge/` 目录
-5. ✅ 将原始文件归档到 `processed/`
+2. ✅ **自动识别内容类型**（即使是混合内容）
+3. ✅ 自动提取关键信息
+4. ✅ 转换为标准的知识库格式
+5. ✅ **分类生成多个文件**到 `knowledge/` 不同位置
+6. ✅ 将原始文件归档到 `processed/`
+
+**如果是混合内容**，AI 会告诉你：
+- 识别出哪几种类型的内容
+- 分别生成了哪些文件
+- 各部分内容的质量如何
 
 然后你可以：
 - 查看生成的知识库文件
@@ -70,29 +94,39 @@ AI 会：
 
 ## 📋 支持的文件类型
 
-### 业务知识
+### 推荐方式：所有类型都放 `mixed/` ⭐
 
+| 你有什么 | 放到哪里 | AI 会自动处理 |
+|---------|---------|--------------|
+| 📄 综合文档（Word/PDF） | `mixed/` | 自动识别并分类到不同知识库 |
+| 📊 数据需求（Excel） | `mixed/` | 同上 |
+| 📝 任何格式的文档 | `mixed/` | 同上 |
+
+**💡 优势**：
+- 文件可以包含术语、表结构、SQL 等多种内容
+- AI 自动识别并分别处理
+- 一个文件可以生成多个知识库文档
+- **完全不用你操心分类！**
+
+### 可选方式：按类型分开放（如果你愿意）
+
+**业务知识**
 | 你有什么 | 放到哪里 | AI 会生成什么 |
 |---------|---------|--------------|
-| 📊 术语表 Excel | `business/` | `knowledge/business/glossary.md` |
-| 📄 指标定义 Word | `business/` | `knowledge/business/metrics/*.md` |
-| 📝 业务规则 Markdown | `business/` | `knowledge/business/calculation_rules/*.md` |
+| 📊 纯术语表 Excel | `business/` | `knowledge/business/glossary.md` |
+| 📄 纯指标定义 Word | `business/` | `knowledge/business/metrics/*.md` |
 
-### 数据资产
-
+**数据资产**
 | 你有什么 | 放到哪里 | AI 会生成什么 |
 |---------|---------|--------------|
-| 📊 数据字典 Excel | `data_assets/` | `knowledge/data_assets/tables/*/*.md` |
-| 💾 建表语句 SQL | `data_assets/` | 提取字段信息到表文档 |
-| 🖼️ 表关系图 PNG | `data_assets/` | 文字描述 + 更新 relationships.md |
+| 📊 纯数据字典 Excel | `data_assets/` | `knowledge/data_assets/tables/*/*.md` |
+| 💾 纯建表语句 SQL | `data_assets/` | 提取字段信息到表文档 |
 
-### SQL 案例
-
+**SQL 案例**
 | 你有什么 | 放到哪里 | AI 会生成什么 |
 |---------|---------|--------------|
-| 💻 SQL 查询 .sql | `sql_examples/` | `knowledge/sql_examples/*/*.md` |
-| 📄 需求文档 Word | `sql_examples/` | 提取需求到 SQL 案例 |
-| 📊 分析报告 Excel | `sql_examples/` | 提取分析逻辑到案例 |
+| 💻 纯 SQL 查询 .sql | `sql_examples/` | `knowledge/sql_examples/*/*.md` |
+| 📄 纯需求文档 Word | `sql_examples/` | 提取需求到 SQL 案例 |
 
 ---
 

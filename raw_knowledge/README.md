@@ -9,26 +9,38 @@
 ```
 raw_knowledge/
 ├── README.md                    # 本文档
-├── business/                    # 业务相关原始资料
+├── QUICK_START.md               # 快速开始指南
+│
+├── mixed/                       # 混合内容的原始资料 ⭐推荐
+│   ├── 综合文档.docx           # 包含多种类型内容
+│   ├── 数据需求.xlsx           # 业务+数据混合
+│   └── ...                     # 不确定放哪里？放这里！
+│
+├── business/                    # 纯业务相关原始资料（可选）
 │   ├── 术语表.xlsx             # 业务术语
 │   ├── 指标定义.docx           # 指标说明文档
-│   ├── 业务规则.md             # 业务规则说明
 │   └── ...
-├── data_assets/                 # 数据资产相关原始资料
+│
+├── data_assets/                 # 纯数据资产相关原始资料（可选）
 │   ├── 数据字典.xlsx           # 表结构和字段说明
-│   ├── 表关系图.png            # 表关联关系图
 │   ├── DDL.sql                 # 建表语句
 │   └── ...
-├── sql_examples/                # SQL 案例相关原始资料
+│
+├── sql_examples/                # 纯 SQL 案例相关原始资料（可选）
 │   ├── 常用查询.sql            # SQL 查询语句
 │   ├── 需求文档.docx           # 业务需求文档
-│   ├── 分析报告.xlsx           # 数据分析报告
 │   └── ...
+│
 └── processed/                   # 已处理的原始资料（存档）
     ├── 2024-01/
     ├── 2024-02/
     └── ...
 ```
+
+**💡 提示**: 
+- 如果你的文件**只包含一种类型**的内容，可以直接放到对应的文件夹
+- 如果你的文件**包含多种类型**的内容，或者**不确定放哪里**，直接放到 `mixed/` 文件夹
+- AI 会自动识别和分类内容，无需手动区分
 
 ---
 
@@ -38,14 +50,25 @@ raw_knowledge/
 
 将收集到的原始知识资料放到对应的文件夹中：
 
-- **业务知识** → `raw_knowledge/business/`
+**方式 1: 不确定放哪里？直接放到 `mixed/`** ⭐推荐
+
+- **任何类型的文件** → `raw_knowledge/mixed/`
+  - 综合性文档、数据需求、分析报告等
+  - AI 会自动识别内容类型并分类处理
+  - **这是最简单的方式，不需要你自己判断！**
+
+**方式 2: 如果很明确是单一类型，可以放到对应文件夹**（可选）
+
+- **纯业务知识** → `raw_knowledge/business/`
   - 术语表、指标定义、业务规则、计算公式等
   
-- **数据资产** → `raw_knowledge/data_assets/`
+- **纯数据资产** → `raw_knowledge/data_assets/`
   - 数据字典、表结构、DDL、数据血缘等
   
-- **SQL 案例** → `raw_knowledge/sql_examples/`
+- **纯 SQL 案例** → `raw_knowledge/sql_examples/`
   - SQL 查询、需求文档、分析报告等
+
+**💡 提示**: 推荐使用方式 1，简单省心！
 
 ### 步骤 2: 通知 AI 处理
 
@@ -223,6 +246,67 @@ AI 会：
 ---
 
 ## 💡 使用示例
+
+### 示例 0: 处理混合内容的文档 ⭐最常见
+
+**原始文件**: `raw_knowledge/mixed/数据需求文档.docx`
+
+**内容**:
+```
+第一部分：业务术语
+- DAU: 日活跃用户数
+- MAU: 月活跃用户数
+
+第二部分：数据表说明
+- 用户行为表（user_behavior）
+  - user_id: 用户ID
+  - behavior_type: 行为类型
+
+第三部分：常用 SQL
+SELECT COUNT(DISTINCT user_id) FROM user_behavior...
+```
+
+**AI 处理**:
+
+```bash
+# 1. 读取文档
+# 2. 自动识别三种类型的内容：
+#    - 业务术语（第一部分）
+#    - 数据表结构（第二部分）
+#    - SQL 查询（第三部分）
+# 3. 分别转换：
+#    - 术语 → knowledge/business/glossary.md
+#    - 表结构 → knowledge/data_assets/tables/dwd/user_behavior.md
+#    - SQL → knowledge/sql_examples/user_analysis/dau.md
+# 4. 归档原始文件到 processed/
+```
+
+**生成内容**: 自动生成 3 个知识库文件
+
+**处理反馈**:
+```markdown
+## 处理完成 ✅
+
+### 原始文件
+- 文件名: `数据需求文档.docx`
+- 位置: `raw_knowledge/mixed/`
+- 内容类型: 混合（业务术语 + 数据表 + SQL）
+
+### 识别结果
+✅ 识别到 3 种类型的内容：
+1. 业务术语: 2 个
+2. 数据表: 1 个
+3. SQL 查询: 1 个
+
+### 生成文件
+1. `knowledge/business/glossary.md` - 新增 2 个术语（DAU, MAU）
+2. `knowledge/data_assets/tables/dwd/user_behavior.md` - 新增 1 个表
+3. `knowledge/sql_examples/user_analysis/dau_simple.md` - 新增 1 个 SQL 案例
+
+### 说明
+✅ 所有内容已自动分类处理
+✅ 无需手动区分内容类型
+```
 
 ### 示例 1: 处理术语表
 
