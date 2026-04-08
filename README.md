@@ -156,13 +156,14 @@ AI:
 
 ```
 /workspace/
-├── docs/           # 文档（9个核心文档）
-├── knowledge/      # 知识库（业务知识 + 数据资产 + SQL 案例）⭐⭐⭐
-├── raw_knowledge/  # 原始知识资料库（待处理的原始资料）⭐⭐
-├── skills/         # AI 技能定义（7个 Skill）⭐⭐
-├── prompts/        # Prompt 模板
-├── tests/          # 测试用例
-└── feedback/       # 反馈收集
+├── docs/                # 文档（9个核心文档）
+├── knowledge/           # 知识库（业务知识 + 数据资产 + SQL 案例）⭐⭐⭐
+├── raw_knowledge/       # 原始知识资料库（待处理的原始资料）⭐⭐
+├── design_philosophy/   # 设计哲学（系统设计思路和内在逻辑）⭐⭐
+├── skills/              # AI 技能定义（7个 Skill）⭐⭐
+├── prompts/             # Prompt 模板
+├── tests/               # 测试用例
+└── feedback/            # 反馈收集
 ```
 
 详见 [INDEX.md](INDEX.md)

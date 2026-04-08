@@ -72,6 +72,16 @@
 | [skills/04_sql_generation.md](skills/04_sql_generation.md) | SQL 生成技能 |
 | [skills/05_sql_validation.md](skills/05_sql_validation.md) | SQL 验证技能 |
 | [skills/06_result_explanation.md](skills/06_result_explanation.md) | 结果解释技能 |
+| [skills/07_raw_knowledge_processing.md](skills/07_raw_knowledge_processing.md) | 原始知识处理技能 |
+
+---
+
+## 🎨 设计哲学
+
+| 文档 | 说明 |
+|------|------|
+| [design_philosophy/README.md](design_philosophy/README.md) | 设计哲学总览 |
+| [design_philosophy/01_business_knowledge_design.md](design_philosophy/01_business_knowledge_design.md) | 业务知识层设计逻辑 ⭐ |
 
 ---
 
@@ -141,9 +151,10 @@
 
 **推荐阅读**:
 1. [docs/architecture.md](docs/architecture.md) - 系统架构
-2. [skills/](skills/) - AI 技能定义
-3. [prompts/system_prompt.md](prompts/system_prompt.md) - 系统 Prompt
-4. [.cursorrules](.cursorrules) - AI 规则
+2. [design_philosophy/](design_philosophy/) - 设计哲学 ⭐
+3. [skills/](skills/) - AI 技能定义
+4. [prompts/system_prompt.md](prompts/system_prompt.md) - 系统 Prompt
+5. [.cursorrules](.cursorrules) - AI 规则
 
 ---
 
