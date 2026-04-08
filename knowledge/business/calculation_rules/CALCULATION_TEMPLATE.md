@@ -192,23 +192,49 @@ ORDER BY [维度];
 
 ---
 
+## 📝 标准模板
+
+### 模板结构
+
+**基本信息**:
+- 规则名称、适用指标、复杂度
+- 引用关系（术语、维度、指标）
+
+**计算定义**:
+- 计算公式（数学表达式）
+- 计算步骤（分步说明）
+
+**SQL 实现**:
+- 完整 SQL 模板（可直接执行）
+
+**技术要点**:
+- 关键技术点（说"为什么"）
+- 常见错误（说"后果"）
+
+**扩展内容**:
+- 变体场景（至少2个）
+- 性能说明
+- 维护信息
+
+---
+
 ## 📊 完整示例
 
-```markdown
-## 次日留存率计算规则
+### 次日留存率计算规则
 
 **规则名称**: 次日留存率计算规则
 
-**适用指标**: 
-- [次日留存率](../metrics/user_metrics.md#次日留存率)
+**适用指标**: 次日留存率
 
 **复杂度**: 非常复杂 ⭐⭐⭐⭐⭐
 
 **引用关系**:
-- **引用的术语**: [新增用户](../glossary.md#新增用户)、[活跃用户](../glossary.md#活跃用户)
-- **引用的维度**: [日](../dimensions/time_dimensions.md#日)
+- 引用的术语: 新增用户、活跃用户
+- 引用的维度: 日
+- 引用的指标: 新增用户数
 
 **计算公式**:
+
 ```
 次日留存率 = (D1活跃用户数 / D0新增用户数) × 100%
 
@@ -223,50 +249,19 @@ ORDER BY [维度];
 - 输入: dwd_user_register
 - 操作: 筛选指定日期注册的用户
 - 输出: user_id, register_date
-- SQL:
-  ```sql
-  WITH base_users AS (
-      SELECT user_id, cast(register_time as date) as register_date
-      FROM dwd_user_register
-      WHERE register_date = date '2024-01-01'
-  )
-  ```
 
 **步骤2**: 找到 D1 活跃用户
 - 输入: base_users + dwd_user_behavior
 - 操作: 关联行为表，筛选 D1 的行为
 - 输出: 留存的 user_id
-- SQL:
-  ```sql
-  retention_users AS (
-      SELECT bu.user_id
-      FROM base_users bu
-      INNER JOIN dwd_user_behavior ub
-        ON bu.user_id = ub.user_id
-        AND ub.date = date_add('day', 1, bu.register_date)
-  )
-  ```
 
 **步骤3**: 计算留存率
 - 输入: base_users + retention_users
 - 操作: LEFT JOIN，计算比率
 - 输出: 留存率
-- SQL:
-  ```sql
-  SELECT 
-      COUNT(DISTINCT bu.user_id) as new_users,
-      COUNT(DISTINCT ru.user_id) as retention_users,
-      ROUND(
-          CAST(COUNT(DISTINCT ru.user_id) AS DOUBLE) * 100.0 
-          / COUNT(DISTINCT bu.user_id), 
-          2
-      ) as retention_rate
-  FROM base_users bu
-  LEFT JOIN retention_users ru
-    ON bu.user_id = ru.user_id
-  ```
 
-**完整 SQL 模板** (Trino):
+**完整 SQL 模板** (Trino 语法):
+
 ```sql
 WITH base_users AS (
     SELECT user_id, cast(register_time as date) as register_date
@@ -339,7 +334,6 @@ LEFT JOIN retention_users ru
 **维护信息**:
 - 负责人: 数据部门
 - 更新时间: 2024-01-01
-```
 
 ---
 
