@@ -1,0 +1,50 @@
+table_id: "dim_dic_channel_info"
+name: "渠道字典维表"
+full_name: "fundx_dim.dim_dic_channel_info_s"
+layer: DIM
+description: "维护渠道号与渠道名称、业务类型、场景类型映射的维度表"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - channel_no
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "channel_no"
+    type: "varchar"
+    description: "渠道号"
+    nullable: false
+    is_partition: false
+
+  - name: "channel_name"
+    type: "varchar"
+    description: "渠道名称"
+    nullable: true
+    is_partition: false
+
+  - name: "channel_biz_type_name"
+    type: "varchar"
+    description: "业务类型名称"
+    nullable: true
+    is_partition: false
+
+  - name: "channel_scene_name"
+    type: "varchar"
+    description: "场景名称"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "用于 flavor/channel 参数转渠道名称"
+  - "查询时建议加 dt 分区条件"

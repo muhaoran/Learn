@@ -1,0 +1,37 @@
+table_id: "dwd_pat_juzi_puof_automation_contact_way_group"
+name: "二维码与小雪映射表"
+full_name: "fundx_dwd.dwd_pat_juzi_puof_automation_contact_way_group_a"
+layer: DWD
+description: "维护私域二维码配置与小雪人员列表映射关系，包含二维码名称与创建时间"
+
+storage:
+  partition_field: null
+  update_frequency: "按需"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - config_name
+
+columns:
+  - name: "config_name"
+    type: "varchar"
+    description: "二维码名称"
+    nullable: false
+    is_partition: false
+
+  - name: "users"
+    type: "varchar"
+    description: "小雪列表（可能为数组字符串）"
+    nullable: true
+    is_partition: false
+
+  - name: "created_at"
+    type: "timestamp"
+    description: "创建时间"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "常用于查询最近创建的二维码配置（ORDER BY created_at DESC）"
+  - "用于二维码投放归因到运营同学"

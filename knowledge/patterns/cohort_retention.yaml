@@ -1,0 +1,133 @@
+pattern_id: "cohort_retention"
+name: "同期群留存"
+description: "计算某日进入的一批用户（同期群），在之后第 N 天仍然活跃的比例，是 D1/D7/D30 留存率的通用计算模式"
+
+parameters:
+  entity:
+    type: Entity
+    required: true
+    description: "统计哪类实体"
+
+  cohort_event:
+    type: Event
+    required: true
+    description: "定义同期群的事件（通常是注册），决定基准日期字段和基准表"
+
+  retain_event:
+    type: Event
+    required: false
+    description: "判断留存的行为事件，展开为 FROM 表 + WHERE type_condition"
+
+  retain_where_dimension_values:
+    type: "list<{dimension_id: Dimension, value: string}>"
+    required: false
+    description: "留存判断的维度字段具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+
+  retain_where_named_values:
+    type: "Dimension.NamedValue[]"
+    required: false
+    description: "留存判断的命名分群过滤，展开为 AND primary_key IN (sql_condition)；多个条件取交集（AND）"
+
+  cohort_date:
+    type: date_expr
+    required: true
+    description: "同期群的基准日期，如 register_date = '2024-01-01'"
+
+  offset_days:
+    type: integer
+    required: true
+    description: "留存观察点，相对基准日期的天数偏移。D1=1, D7=7, D30=30"
+
+  group_by:
+    type: "Dimension[]"
+    required: false
+    description: "分组维度；有 sql_expr 的展开为字段直接分组，有 named_values 的展开为 CASE WHEN 分组列（如按渠道分组看留存）"
+
+sql_template: |
+  WITH cohort AS (
+    -- 基准用户：在 cohort_date 发生了 cohort_event 的用户
+    SELECT
+      ${entity.primary_key},
+      ${cohort_event.date_field} AS cohort_date
+      ${, group_by.expr}
+    FROM ${cohort_event.source_table}
+    WHERE ${cohort_date}
+  ),
+  retained AS (
+    -- 留存用户：在 cohort_date + offset_days 这天仍然活跃
+    SELECT DISTINCT ${entity.primary_key}
+    FROM ${retain_event.source_table OR entity.anchor_table}
+    ${LEFT JOIN dim.source_table ON dim.join_key}               -- retain_where_dimension_values 需要时展开
+    WHERE ${AND retain_event.type_condition}
+      ${AND retain_where_dimension_values.sql_expr = value, ...}
+      ${AND retain_where_named_values.sql_condition, ...}
+      AND date IN (
+        SELECT date_add('day', ${offset_days}, cohort_date)
+        FROM cohort
+      )
+  )
+  SELECT
+    ${group_by.expr, ...}
+    COUNT(DISTINCT c.${entity.primary_key})                              AS cohort_size,
+    COUNT(DISTINCT r.${entity.primary_key})                              AS retained_count,
+    COUNT(DISTINCT r.${entity.primary_key}) * 1.0
+      / NULLIF(COUNT(DISTINCT c.${entity.primary_key}), 0)              AS retention_rate
+  FROM cohort c
+  LEFT JOIN retained r ON c.${entity.primary_key} = r.${entity.primary_key}
+  ${GROUP BY group_by.expr, ...}
+
+example_usage:
+  - description: "计算 2024-01-01 新增用户的次日（D1）留存率"
+    parameters:
+      entity: "user"
+      cohort_event: "registration"
+      retain_event: "active_behavior"                           # Event → FROM dwd_user_behavior，无 type_condition
+      cohort_date: "register_date = '2024-01-01'"
+      offset_days: 1
+    generated_sql: |
+      WITH cohort AS (
+        SELECT user_id, register_date AS cohort_date
+        FROM dwd_user_register
+        WHERE register_date = '2024-01-01'
+      ),
+      retained AS (
+        SELECT DISTINCT user_id
+        FROM dwd_user_behavior
+        WHERE date = date_add('day', 1, DATE '2024-01-01')
+      )
+      SELECT
+        COUNT(DISTINCT c.user_id)                                         AS cohort_size,
+        COUNT(DISTINCT r.user_id)                                         AS retained_count,
+        COUNT(DISTINCT r.user_id) * 1.0
+          / NULLIF(COUNT(DISTINCT c.user_id), 0)                         AS retention_rate
+      FROM cohort c
+      LEFT JOIN retained r ON c.user_id = r.user_id
+
+  - description: "按注册渠道分组，计算 D7 留存率"
+    parameters:
+      entity: "user"
+      cohort_event: "registration"
+      retain_event: "active_behavior"
+      cohort_date: "register_date = '2024-01-01'"
+      offset_days: 7
+      group_by: ["user_register_channel"]
+    generated_sql: |
+      WITH cohort AS (
+        SELECT user_id, register_date AS cohort_date, register_channel
+        FROM dwd_user_register
+        WHERE register_date = '2024-01-01'
+      ),
+      retained AS (
+        SELECT DISTINCT user_id
+        FROM dwd_user_behavior
+        WHERE date = date_add('day', 7, DATE '2024-01-01')
+      )
+      SELECT
+        c.register_channel,
+        COUNT(DISTINCT c.user_id)                                         AS cohort_size,
+        COUNT(DISTINCT r.user_id)                                         AS retained_count,
+        COUNT(DISTINCT r.user_id) * 1.0
+          / NULLIF(COUNT(DISTINCT c.user_id), 0)                         AS retention_rate
+      FROM cohort c
+      LEFT JOIN retained r ON c.user_id = r.user_id
+      GROUP BY c.register_channel

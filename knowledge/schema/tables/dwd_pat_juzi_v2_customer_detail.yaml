@@ -1,0 +1,50 @@
+table_id: "dwd_pat_juzi_v2_customer_detail"
+name: "句子老标签表"
+full_name: "fundx_dwd.dwd_pat_juzi_v2_customer_detail_s"
+layer: DWD
+description: "句子系统的老版本客户标签表，包含系统标签分组和标签名称，用于查询历史用户模式等系统标签。新合并标签推荐使用 dwd_pat_juzi_mhlabel_record_s"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-03-06"
+
+  - name: "system_tag_group_name"
+    type: "varchar"
+    description: "系统标签分组名称"
+    nullable: true
+    is_partition: false
+    example: "历史用户模式"
+
+  - name: "system_tag_name"
+    type: "varchar"
+    description: "系统标签名称"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "该表为句子老标签，新合并标签（句子+企微）推荐使用 fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+  - "查询历史用户模式标签示例：WHERE system_tag_group_name = '历史用户模式'"
+  - "企微原始标签见 fundx_ods.ods_fundx_socialcrm_wechat_customer_tag_info_s_trans"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "句子+企微合并标签（推荐替代本表）"
+  - table: "fundx_ods.ods_fundx_socialcrm_wechat_customer_tag_info_s_trans"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "企微原始标签"

@@ -1,0 +1,20 @@
+table_id: "center_user_dj_offline_attribute"
+name: "蛋卷用户离线属性表"
+full_name: "data_center.center_user_dj_offline_attribute_s"
+layer: ADS
+description: "DMP 中心化蛋卷用户主题离线属性表，用于标签圈选与人群分析"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅出现表名，字段定义需补录"
+  - "属于 DMP 标签底座表，可承载用户分层标签"
+  - "邮寄系统物品价格表：xq_ods.ods_aws_bo_snow_goods_inventory_s_trans（示例字段：sku, goodsname, unit_price）"

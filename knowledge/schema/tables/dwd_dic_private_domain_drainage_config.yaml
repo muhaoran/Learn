@@ -1,0 +1,50 @@
+table_id: "dwd_dic_private_domain_drainage_config"
+name: "前端埋点渠道配置表"
+full_name: "xq_dwd.dwd_dic_private_domain_drainage_config_s"
+layer: DWD
+description: "维护私域引流配置及前端埋点渠道信息，包括渠道名称、报名解析字段和链接"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - id
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "id"
+    type: "bigint"
+    description: "配置ID"
+    nullable: false
+    is_partition: false
+
+  - name: "parse_channel_enroll"
+    type: "varchar"
+    description: "渠道解析字段（报名口径）"
+    nullable: true
+    is_partition: false
+
+  - name: "link_url"
+    type: "varchar"
+    description: "渠道链接"
+    nullable: true
+    is_partition: false
+
+  - name: "name"
+    type: "varchar"
+    description: "渠道名称"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "用于前端埋点渠道号与渠道名称映射"
+  - "查询时建议指定 dt 分区"

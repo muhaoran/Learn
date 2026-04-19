@@ -1,0 +1,28 @@
+dimension_id: "user_register_channel"
+name: "注册渠道"
+entity: "user"
+description: "用户注册时的来源渠道，反映用户的获取途径"
+
+aliases:
+  - "渠道"
+  - "注册来源"
+  - "channel"
+  - "register_channel"
+
+source_table: "dwd_user_register"
+join_key: "user_id"
+sql_expr: "register_channel"
+
+known_values:
+  - value: "app_store"
+    name: "App Store"
+  - value: "android_market"
+    name: "安卓市场"
+  - value: "ad_baidu"
+    name: "百度广告"
+  - value: "ad_tencent"
+    name: "腾讯广告"
+  - value: "organic"
+    name: "自然流量"
+  - value: "invite"
+    name: "邀请注册"

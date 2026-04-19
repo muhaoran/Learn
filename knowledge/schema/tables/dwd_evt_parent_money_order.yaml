@@ -1,0 +1,151 @@
+table_id: "dwd_evt_parent_money_order"
+name: "交易订单表（父单）"
+full_name: "fundx_dwd.dwd_evt_parent_money_order_s"
+layer: DWD
+description: "记录公募基金的所有交易父订单，包含主动申购、定投、转换等各类买入行为"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "百万级/天"
+  retention: "永久保留"
+
+primary_key:
+  - batch_order_serial_no
+
+columns:
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID（dj_uid）"
+    nullable: false
+    is_partition: false
+
+  - name: "batch_order_serial_no"
+    type: "varchar"
+    description: "批次订单流水号（父单唯一标识）"
+    nullable: false
+    is_partition: false
+
+  - name: "pro_code"
+    type: "varchar"
+    description: "产品代码"
+    nullable: false
+    is_partition: false
+    example: "TRI001"
+
+  - name: "pro_name"
+    type: "varchar"
+    description: "产品名称"
+    nullable: true
+    is_partition: false
+
+  - name: "flavor"
+    type: "varchar"
+    description: "渠道（get_tra渠道）"
+    nullable: true
+    is_partition: false
+
+  - name: "init_amount"
+    type: "decimal"
+    description: "下单金额（元）"
+    nullable: true
+    is_partition: false
+
+  - name: "init_time"
+    type: "varchar"
+    description: "下单时间（字符串格式 yyyy-MM-dd HH:mm:ss）"
+    nullable: true
+    is_partition: false
+    example: "2025-01-20 10:30:00"
+
+  - name: "is_private"
+    type: "int"
+    description: "是否私募"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "公募"
+      - value: "1"
+        description: "私募"
+
+  - name: "trade_mode"
+    type: "int"
+    description: "交易模式（主动类买入）"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "主动认购"
+      - value: "2"
+        description: "主动申购"
+      - value: "3"
+        description: "主动定投"
+      - value: "4"
+        description: "主动普通转换入"
+      - value: "5"
+        description: "主动超级转转入"
+
+  - name: "action"
+    type: "varchar"
+    description: "交易动作代码（特殊买入类型）"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "223"
+        description: "预约买入"
+      - value: "339"
+        description: "定投预约买入"
+      - value: "327"
+        description: "三分法迁入父单"
+      - value: "636"
+        description: "组合打散"
+
+  - name: "invest_account_code"
+    type: "varchar"
+    description: "子账户代码，用于区分三分法与普通账户"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "TRICHOTOMY"
+        description: "三分法子账户"
+      - value: "DEFAULT"
+        description: "默认账户"
+
+  - name: "ttype"
+    type: "varchar"
+    description: "交易类型标识"
+    nullable: true
+    is_partition: false
+    example: "plan（组合打散场景）"
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期（T日数据在T日分区）"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "过滤公募：AND is_private = 0"
+  - "主动买入（推荐写法）：AND trade_mode IN (1,2,3,4,5)"
+  - "含特殊买入的完整写法（2025-09-03后）：AND (trade_mode IN (1,2,3,4,5) OR action IN ('223','339'))"
+  - "三分法迁入单独用 ods_fundx_order_asset_transfer_detail_s 表查询，action=327 仅为父单标记"
+  - "下单时间用 substr(init_time,1,10) 截取日期部分，因为 init_time 为字符串类型"
+  - "dt 是数据分区日期，init_time 是实际下单时间，两者可能不同，统计时注意区分"
+  - "TRI001 = 三分法产品，TRI002 = 有知有行养老计划"
+
+related_tables:
+  - table: "fundx_dws.dws_evt_parent_money_first_trade_s"
+    join_field: "uid"
+    join_type: "1:1"
+    purpose: "获取首购信息（汇总表，优先使用）"
+  - table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+    join_field: "uid, pro_code"
+    join_type: "N:1"
+    purpose: "关联持仓信息"
+  - table: "fundx_dim.dim_dic_channel_info_s"
+    join_field: "flavor=channel_no"
+    join_type: "N:1"
+    purpose: "渠道名称、业务类型"

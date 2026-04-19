@@ -1,0 +1,37 @@
+table_id: "dim_dic_juzi_channel_info"
+name: "句子建联渠道字典表"
+full_name: "fundx_dim.dim_dic_juzi_channel_info_a"
+layer: DIM
+description: "建联渠道字典表，维护 state 与 remark 的映射关系，用于私域建联渠道标准化"
+
+storage:
+  partition_field: null
+  update_frequency: "按需"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - state
+
+columns:
+  - name: "state"
+    type: "varchar"
+    description: "渠道状态码（建联参数）"
+    nullable: false
+    is_partition: false
+
+  - name: "remark"
+    type: "varchar"
+    description: "渠道说明（渠道中文名）"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "用于建联渠道匹配：state -> 渠道名称"
+  - "与 xq_ods.ods_analysis_weixin_customer_relation_s_trans 通过 state 关联"
+
+related_tables:
+  - table: "xq_ods.ods_analysis_weixin_customer_relation_s_trans"
+    join_field: "state"
+    join_type: "1:N"
+    purpose: "补充建联渠道名称"

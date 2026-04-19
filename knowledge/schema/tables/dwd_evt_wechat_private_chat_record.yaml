@@ -1,0 +1,60 @@
+table_id: "dwd_evt_wechat_private_chat_record"
+name: "企微私聊记录表"
+full_name: "fundx_dwd.dwd_evt_wechat_private_chat_record_i"
+layer: DWD
+description: "记录小雪与用户之间的企业微信私聊消息，仅包含私聊（chat_type='user to xiaoxue'），用于统计最近一次聊天时间、私聊活跃度分析等"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - from_id
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2024-07-10"
+
+  - name: "from_id"
+    type: "varchar"
+    description: "消息发送方ID（通常为用户的企微ID）"
+    nullable: false
+    is_partition: false
+
+  - name: "msg_time"
+    type: "timestamp"
+    description: "消息发送时间（取每日最大值可得最近聊天时间）"
+    nullable: true
+    is_partition: false
+
+  - name: "chat_type"
+    type: "varchar"
+    description: "聊天类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "user to xiaoxue"
+        description: "用户发给小雪的私聊消息"
+
+notes:
+  - "该表只有私聊，无群聊数据；群聊数据见 fundx_dwd.dwd_evt_puof_private_domain_team_member_s"
+  - "统计最近私聊时间：GROUP BY dt, from_id，取 MAX(msg_time)"
+  - "全量聊天记录（含群聊）见 fundx_ads.ads_prodept_evt_juzi_message_date_i"
+  - "流程开始日期通常设为 2024-07-10"
+
+related_tables:
+  - table: "fundx_ads.ads_prodept_evt_juzi_message_date_i"
+    join_field: "from_id"
+    join_type: "N:1"
+    purpose: "全量聊天记录（含群聊）"
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "from_id=wechat_id"
+    join_type: "N:1"
+    purpose: "关联私域用户基本信息"

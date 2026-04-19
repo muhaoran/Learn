@@ -201,12 +201,12 @@ SQL 验证通过后，输出给用户时触发。
 -- 查询最近 7 天的 DAU 趋势
 SELECT 
     date,
-    COUNT(DISTINCT user_id) as dau
+    COUNT(DISTINCT user_id) AS dau
 FROM 
     dws_user_daily
 WHERE 
-    date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
-    AND date <= CURRENT_DATE()
+    date >= date_add('day', -6, current_date)
+    AND date <= current_date
     AND is_active = 1
 GROUP BY 
     date

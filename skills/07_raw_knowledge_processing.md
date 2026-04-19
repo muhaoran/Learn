@@ -13,19 +13,16 @@
 用户将原始资料放到 `raw_knowledge/` 文件夹，并请求处理。
 
 **触发指令示例**:
-- "请处理 raw_knowledge/mixed/数据需求.docx" ⭐最常见
-- "请处理 raw_knowledge/business/术语表.xlsx"
+- "请处理 raw_knowledge/mixed/数据需求.docx"
 - "我放了新的原始资料，请帮我处理"
-- "处理 raw_knowledge/ 下的所有文件"
+- "处理 raw_knowledge/mixed/ 下的所有文件"
 
 ---
 
 ## 输入
 
-- 原始知识资料文件（Excel、Word、SQL、Markdown 等）
-- 文件位置：`raw_knowledge/{mixed|business|data_assets|sql_examples}/`
-  - **推荐**: 优先放到 `mixed/`，AI 自动识别和分类
-  - **可选**: 如果明确是单一类型，可以放到对应文件夹
+- 原始知识资料文件（Excel、Word、SQL、Markdown、txt 等任意文本格式）
+- 文件位置：`raw_knowledge/mixed/`（唯一的输入目录，不区分类型）
 
 ---
 
@@ -177,21 +174,26 @@
 - 结果说明
 - 注意事项
 
-### 步骤 3: 选择目标模板
+### 步骤 3: 确定写入目标
 
-**任务**: 根据资料类型选择对应的知识库模板
+**任务**: 根据识别出的内容类型，确定应该写入新四层架构的哪个位置
 
 **映射关系**:
 
-| 原始资料类型 | 目标模板 | 目标路径 |
-|-------------|---------|---------|
-| 术语表 | glossary.md | `knowledge/business/glossary.md` |
-| 指标定义 | metrics 模板 | `knowledge/business/metrics/{类型}_metrics.md` |
-| 维度定义 | dimensions 模板 | `knowledge/business/dimensions/{类型}_dimensions.md` |
-| 计算规则 | calculation_rules 模板 | `knowledge/business/calculation_rules/{规则名}.md` |
-| 数据字典/表结构 | TABLE_TEMPLATE.md | `knowledge/data_assets/tables/{层级}/{表名}.md` |
-| 表关系 | relationships.md | `knowledge/data_assets/relationships.md` |
-| SQL 查询 | EXAMPLE_TEMPLATE.md | `knowledge/sql_examples/{分类}/{案例名}.md` |
+| 识别出的内容类型 | 写入目标 | 参考模板 |
+|----------------|---------|---------|
+| 表名、字段、类型、分区、枚举值 | `knowledge/schema/tables/{表名}.yaml` | `knowledge/schema/TEMPLATE.yaml` |
+| 业务对象定义（用户/帖子/订单） | `knowledge/semantics/entities/{实体id}.yaml` | `knowledge/semantics/entities/TEMPLATE.yaml` |
+| 业务动作定义（注册/活跃/发帖） | `knowledge/semantics/events/{事件id}.yaml` | `knowledge/semantics/events/TEMPLATE.yaml` |
+| 简单属性维度（渠道/平台等字段） | `knowledge/semantics/dimensions/{维度id}.yaml` | `knowledge/semantics/dimensions/TEMPLATE.yaml` |
+| 命名标签/分群定义（活跃用户/新用户等） | `knowledge/semantics/dimensions/*.yaml` 中的 `named_values` | 同上 |
+| 可复用计算逻辑（留存、去重计数等） | `knowledge/patterns/{模式id}.yaml` | `knowledge/patterns/TEMPLATE.yaml` |
+| 有名字的具体指标口径（DAU、次日留存率等） | `knowledge/metrics/{指标id}.yaml` | `knowledge/metrics/TEMPLATE.yaml` |
+
+**关键判断原则**:
+- 同一份原始资料通常包含多种类型内容，应分别写入多个文件
+- 有独立业务名称且口径需固化的指标 → 写 `metrics/`，否则由 AI 即时推导
+- 能用字段直接表达的维度 → `sql_expr` 字段；需要 SQL 计算的 → `named_values`
 
 ### 步骤 4: 转换和组织内容
 
@@ -215,10 +217,10 @@
    - 统一字段命名规范
    - 统一数据类型表示
 
-4. **转换 SQL 语法**（如果是 SQL 案例）
+4. **转换 SQL 语法**（如果涉及 SQL 片段）
    - **必须将 SQL 转换为 Trino 语法**
    - 不能保留 MySQL/Hive 等其他语法
-   - 参考 `knowledge/data_assets/trino_syntax_guide.md`
+   - 参考 `knowledge/schema/trino_syntax.md`
    - 添加必要的注释
 
 ### 步骤 5: 质量检查
@@ -249,9 +251,9 @@
 
 如果原始文件包含多种类型的内容：
 1. ✅ **分别生成多个文件**
-   - 业务术语 → `knowledge/business/glossary.md`
-   - 数据表 → `knowledge/data_assets/tables/...`
-   - SQL 案例 → `knowledge/sql_examples/...`
+   - 指标定义 → `knowledge/metrics/`
+   - 实体/事件/维度定义 → `knowledge/semantics/`
+   - 表结构 → `knowledge/schema/tables/`
 2. ✅ **记录来源**: 在每个生成的文件中标注来源于同一份原始资料
 3. ✅ **保持关联**: 在文件中添加相互引用
 
@@ -316,9 +318,10 @@
 - 维度数量: 3 个
 
 ### 生成文件
-1. `knowledge/business/glossary.md` - 新增 15 个术语
-2. `knowledge/business/metrics/user_metrics.md` - 新增 8 个指标
-3. `knowledge/business/dimensions/user_dimensions.md` - 新增 3 个维度
+1. `knowledge/semantics/entities/user.yaml` - 更新实体定义（如有新信息）
+2. `knowledge/semantics/events/*.yaml` - 新增/更新事件定义
+3. `knowledge/semantics/dimensions/*.yaml` - 新增/更新维度和命名标签
+4. `knowledge/metrics/*.yaml` - 新增有独立名称的指标（如有）
 
 ### 处理说明
 - ✅ 所有术语定义清晰
@@ -347,32 +350,30 @@
 - 质量评估: ⭐⭐⭐⭐ 良好
 
 ### 识别结果
-✅ 自动识别到 3 种类型的内容：
-1. **业务术语**: 在第 1-2 章
-   - DAU, MAU, 次留 等 8 个术语
+✅ 自动识别到 3 类知识：
+1. **业务语义定义**: 在第 1-2 章
+   - DAU、MAU 是有名字的指标；活跃用户、新用户是命名标签；注册渠道是维度
 2. **数据表结构**: 在第 3 章
-   - 用户行为表、用户注册表 等 3 张表
-3. **SQL 查询**: 在第 4 章
-   - DAU 统计、留存分析 等 2 个查询
+   - 用户行为表、用户注册表、用户日度汇总表
+3. **计算逻辑**: 在第 4 章
+   - 留存率的计算公式（同期群模式）
 
-### 提取信息
-- 业务术语: 8 个
-- 数据表: 3 张，共 25 个字段
-- SQL 查询: 2 个
+### 写入位置（按新四层架构）
 
-### 生成文件
-**业务知识** (8 个术语):
-1. `knowledge/business/glossary.md` - 新增 8 个术语
+**业务语义层**:
+1. `knowledge/semantics/events/registration.yaml` - 注册事件（更新或确认）
+2. `knowledge/semantics/events/active_behavior.yaml` - 活跃行为事件（更新或确认）
+3. `knowledge/semantics/dimensions/user_register_channel.yaml` - 注册渠道维度
+4. `knowledge/semantics/dimensions/user_computed_tags.yaml` - 更新 active_user、new_user 命名标签
 
-**数据资产** (3 张表):
-2. `knowledge/data_assets/tables/dwd/dwd_user_behavior.md` - 用户行为表
-3. `knowledge/data_assets/tables/dwd/dwd_user_register.md` - 用户注册表
-4. `knowledge/data_assets/tables/dws/dws_user_daily.md` - 用户日度汇总表
-5. `knowledge/data_assets/relationships.md` - 更新表关联关系
+**数据字典层**:
+5. `knowledge/schema/tables/dwd_user_behavior.yaml` - 用户行为表（更新或创建）
+6. `knowledge/schema/tables/dwd_user_register.yaml` - 用户注册表（更新或创建）
+7. `knowledge/schema/tables/dws_user_daily.yaml` - 用户日度汇总表（更新或创建）
 
-**SQL 案例** (2 个查询):
-6. `knowledge/sql_examples/user_analysis/dau_stat.md` - DAU 统计（已转为 Trino 语法）
-7. `knowledge/sql_examples/user_analysis/retention.md` - 留存分析（已转为 Trino 语法）
+**指标目录层**:
+8. `knowledge/metrics/dau.yaml` - DAU 指标（如不存在则创建）
+9. `knowledge/metrics/d1_retention_rate.yaml` - 次日留存率指标（如不存在则创建）
 
 ### 处理说明
 - ✅ 成功识别并分类处理所有内容
@@ -531,16 +532,17 @@
 ```
 原始文件: 数据需求.docx
 
-第 1 章: 业务背景
-  → 提取术语 → knowledge/business/glossary.md
+第 1 章: 业务背景（术语定义）
+  → 识别实体/事件/维度/指标 → knowledge/semantics/ 和 knowledge/metrics/
 
 第 2 章: 数据表说明
-  → 提取表结构 → knowledge/data_assets/tables/...
+  → 提取表结构 → knowledge/schema/tables/
 
-第 3 章: 查询需求
-  → 提取 SQL → knowledge/sql_examples/...
+第 3 章: 查询需求（SQL 片段）
+  → 确认 Pattern 和语义定义，不新建 SQL 文件
+  → 如有新表结构信息 → 更新 knowledge/schema/tables/
 
-结果: 从 1 个原始文件生成 5+ 个知识库文件
+结果: 从 1 个原始文件更新多个知识库 YAML 文件
 ```
 
 ---
@@ -549,7 +551,7 @@
 
 ### 示例 1: 处理术语表 Excel
 
-**输入**: `raw_knowledge/business/雪球术语表.xlsx`
+**输入**: `raw_knowledge/business/业务术语表.xlsx`
 
 **内容**:
 | 术语 | 英文 | 定义 | 业务场景 |
@@ -560,18 +562,17 @@
 **处理过程**:
 
 ```markdown
-1. ✅ 识别文件类型: Excel 术语表
-2. ✅ 质量评估: ⭐⭐⭐⭐⭐ 优秀（结构清晰，信息完整）
-3. ✅ 提取信息: 2 个术语
-4. ✅ 选择模板: glossary.md
-5. ✅ 转换内容:
-   - DAU: 补充计算规则、数据来源
-   - 次留: 补充计算公式、相关指标
-6. ✅ 生成文件: knowledge/business/glossary.md（追加内容）
-7. ✅ 归档: raw_knowledge/processed/2024-01/雪球术语表.xlsx
+1. ✅ 识别类型: 两个有名字的指标（DAU、次留）+ 关联的事件/计算逻辑
+2. ✅ 质量评估: 良好（结构清晰，有定义）
+3. ✅ 判断写入位置:
+   - DAU → knowledge/metrics/dau.yaml（指标层）
+   - 次留 → knowledge/metrics/d1_retention_rate.yaml（指标层）
+   - 活跃行为事件 → knowledge/semantics/events/active_behavior.yaml（语义层）
+4. ✅ 写入文件（新建或更新）
+5. ✅ 归档: raw_knowledge/processed/2024-01/业务术语表.xlsx
 ```
 
-**输出**: 在 `knowledge/business/glossary.md` 中新增 2 个术语定义
+**输出**: 在 `knowledge/metrics/` 新增或更新 2 个指标文件
 
 ### 示例 2: 处理 SQL 文件
 
@@ -589,25 +590,20 @@ WHERE date = DATE_SUB(CURRENT_DATE(), 1);
 **处理过程**:
 
 ```markdown
-1. ✅ 识别文件类型: SQL 查询（MySQL 语法）
-2. ✅ 质量评估: ⭐⭐⭐⭐ 良好（有注释，但语法需转换）
-3. ✅ 提取信息:
-   - 业务需求: 查询昨天的 DAU
-   - 使用的表: user_behavior
-   - 计算逻辑: COUNT(DISTINCT user_id)
-4. ✅ 选择模板: EXAMPLE_TEMPLATE.md
-5. ✅ 转换内容:
-   - 补充需求分析
-   - **转换为 Trino 语法**:
-     - DATE_SUB(CURRENT_DATE(), 1) → date_add('day', -1, current_date)
-     - 表名可能需要确认（user_behavior → dwd_user_behavior?）
-   - 补充技术方案说明
-   - 添加结果字段说明
-6. ✅ 生成文件: knowledge/sql_examples/user_analysis/dau_yesterday.md
-7. ✅ 归档: raw_knowledge/processed/2024-01/计算DAU.sql
+1. ✅ 识别类型: 涉及 DAU 指标 + active_behavior 事件 + dwd_user_behavior 表
+2. ✅ 质量评估: 良好（语义清晰，语法需转换）
+3. ✅ 判断写入位置:
+   - 表名需确认: user_behavior → dwd_user_behavior?（标注待确认）
+   - active_behavior 事件已有定义，无需新建
+   - DAU 指标已有定义，无需新建
+   - SQL 中的计算逻辑（COUNT DISTINCT）对应 count_distinct Pattern，已有
+4. ✅ 如果表名确认，更新 knowledge/schema/tables/dwd_user_behavior.yaml（如有新字段信息）
+5. ✅ 注意：SQL 本身不作为独立文件保存（新架构下由 Pattern 组合生成），但 Trino 语法转换提示:
+   - DATE_SUB(CURRENT_DATE(), 1) → date_add('day', -1, current_date)
+6. ✅ 归档: raw_knowledge/processed/2024-01/计算DAU.sql
 ```
 
-**输出**: 生成完整的 SQL 案例文档（使用 Trino 语法）
+**输出**: 确认表结构信息，更新 schema/（如有新信息）
 
 ### 示例 3: 处理数据字典 Excel
 
@@ -624,24 +620,18 @@ WHERE date = DATE_SUB(CURRENT_DATE(), 1);
 **处理过程**:
 
 ```markdown
-1. ✅ 识别文件类型: 数据字典
-2. ✅ 质量评估: ⭐⭐⭐⭐⭐ 优秀（字段完整，有分区说明）
-3. ✅ 提取信息:
-   - 表名: 用户行为表（推测为 dwd_user_behavior）
-   - 字段: 4 个
-   - 分区字段: date
-4. ✅ 选择模板: TABLE_TEMPLATE.md
-5. ✅ 转换内容:
-   - 补充表的中英文名称
-   - 补充表的用途和使用场景
-   - 补充字段的约束（主键、非空等）
-   - 补充数据更新频率
-6. ✅ 生成文件: knowledge/data_assets/tables/dwd/dwd_user_behavior.md
-7. ✅ 更新关联: knowledge/data_assets/relationships.md
-8. ✅ 归档: raw_knowledge/processed/2024-01/用户行为表.xlsx
+1. ✅ 识别类型: 数据字典（表结构信息）→ 写入 Schema 层
+2. ✅ 质量评估: 优秀（字段完整，有分区说明）
+3. ✅ 判断写入位置: knowledge/schema/tables/dwd_user_behavior.yaml
+4. ✅ 按 TEMPLATE.yaml 格式组织:
+   - 填写 columns 列表（字段名、类型、说明、is_partition）
+   - 补充 notes（如：必须加 date 分区条件）
+   - 填写 related_tables（如果原始资料有关联信息）
+5. ✅ 生成文件: knowledge/schema/tables/dwd_user_behavior.yaml
+6. ✅ 归档: raw_knowledge/processed/2024-01/用户行为表.xlsx
 ```
 
-**输出**: 生成完整的表文档
+**输出**: 新建或更新 `knowledge/schema/tables/dwd_user_behavior.yaml`
 
 ---
 
@@ -662,7 +652,7 @@ WHERE date = DATE_SUB(CURRENT_DATE(), 1);
 ### 3. 转换 SQL 为 Trino 语法
 
 - ✅ **必须转换为 Trino 语法**
-- ✅ 参考 `trino_syntax_guide.md`
+- ✅ 参考 `knowledge/schema/trino_syntax.md`
 - ✅ 标注转换的部分
 - ❌ 不能保留非 Trino 语法
 

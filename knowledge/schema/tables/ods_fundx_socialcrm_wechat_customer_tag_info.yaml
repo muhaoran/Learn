@@ -1,0 +1,31 @@
+table_id: "ods_fundx_socialcrm_wechat_customer_tag_info"
+name: "企微标签原始表"
+full_name: "fundx_ods.ods_fundx_socialcrm_wechat_customer_tag_info_s_trans"
+layer: ODS
+description: "企业微信中给客户打的标签原始数据，包含所有手动和自动打标的企微标签记录。新合并标签推荐使用 dwd_pat_juzi_mhlabel_record_s"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅通过 SELECT * 方式出现，具体字段需从实际数据补充"
+  - "该表为企微原始标签，句子+企微合并标签（推荐）见 fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+  - "句子老标签见 fundx_dwd.dwd_pat_juzi_v2_customer_detail_s"
+  - "查询黑金卡标签示例：WHERE label_type = '黑金卡' AND label_name LIKE '%黑金%'（该过滤逻辑在合并表中使用）"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "句子+企微合并标签（推荐替代本表）"
+  - table: "fundx_dwd.dwd_pat_juzi_v2_customer_detail_s"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "句子老标签"

@@ -1,0 +1,25 @@
+metric_id: "trichotomy_aum"
+name: "三分法持仓金额"
+description: "统计三分法子账户的持仓金额（AUM），口径为持仓快照表中 invest_account_code='TRICHOTOMY' 且持仓量大于0的 amount 汇总"
+
+pattern: "sum_metric"
+
+pattern_params:
+  sum_field: "amount"
+  entity: "user"
+  anchor_table: "holding"           # → user.anchor_tables.holding = dwd_ast_pub_daily_holding_detail_i
+  time_window: "dt = ${target_date}"
+  where_dimension_values:
+    - dimension_id: holding_invest_account
+      value: "TRICHOTOMY"           # → AND invest_account_code = 'TRICHOTOMY'
+  where_named_values:
+    - holding_volume_positive       # → AND uid IN (... volume > 0 ...)
+
+aliases:
+  - "三分法AUM"
+  - "三分法持仓"
+  - "trichotomy_aum"
+
+notes:
+  - "只统计三分法子账户（invest_account_code='TRICHOTOMY'）且持仓量大于0的记录"
+  - "数据来自持仓快照表，非事件流水，每日全量快照"

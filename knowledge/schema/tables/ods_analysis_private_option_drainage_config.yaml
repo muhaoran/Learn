@@ -1,0 +1,63 @@
+table_id: "ods_analysis_private_option_drainage_config"
+name: "SOP建联配置表"
+full_name: "xq_ods.ods_analysis_private_option_drainage_config_s_trans"
+layer: ODS
+description: "记录公募私域SOP的建联配置信息，包含投放类型、定向目标、素材等，用于分析各类公募咨询SOP的触达策略"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "千级/天"
+  retention: "永久保留"
+
+primary_key:
+  - id
+
+columns:
+  - name: "id"
+    type: "bigint"
+    description: "配置唯一ID"
+    nullable: false
+    is_partition: false
+
+  - name: "name"
+    type: "varchar"
+    description: "配置名称"
+    nullable: true
+    is_partition: false
+
+  - name: "put_type"
+    type: "varchar"
+    description: "投放类型"
+    nullable: true
+    is_partition: false
+
+  - name: "targeting_goal"
+    type: "varchar"
+    description: "定向目标/公募咨询类型，非空代表有效配置"
+    nullable: true
+    is_partition: false
+
+  - name: "material_id"
+    type: "varchar"
+    description: "素材ID"
+    nullable: true
+    is_partition: false
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "targeting_goal IS NOT NULL 才是有效的公募咨询配置"
+  - "查询时必须添加 dt 分区条件"
+
+related_tables:
+  - table: "fundx_ods.ods_fundx_socialcrm_flow_detail_s"
+    join_field: "targeting_goal/flow_id"
+    join_type: "1:N"
+    purpose: "关联SOP进入记录"

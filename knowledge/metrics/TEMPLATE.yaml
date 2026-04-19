@@ -1,0 +1,49 @@
+# 指标目录（Metric）定义模板
+
+metric_id: "your_metric_id"         # 英文标识，全小写下划线
+name: "中文指标名"
+description: "这个指标衡量什么，一句话说清楚口径"
+
+# 使用哪个计算模式
+pattern: "count_distinct"           # 对应 patterns/ 目录中的 pattern_id
+
+# 传给 Pattern 的参数（参数名必须与 Pattern 中定义的一致）
+pattern_params:
+  # ── 统计主体 ──────────────────────────────────────────────────────
+  entity: "user"                    # count_distinct 必填；sum_metric 快照型必填
+
+  # ── 数据来源（按 pattern 类型选择，只填对应的一项）────────────────
+  # count_distinct / sum_metric 事件型填这个：
+  event: "active_behavior"        # 对应 semantics/events/ 中的 event_id，从中推导来源表
+  # sum_metric 快照型填这个：
+  anchor_table: "holding"         # 对应 semantics/entities/ 中该实体的 anchor_tables 下的 key（如 user.yaml 中的 "holding"）
+
+  # ── sum_metric 专用 ───────────────────────────────────────────────
+  sum_field: "amount"             # 要求和的字段名
+
+  # ── 时间范围（必填，二选一）─────────────────────────────────────
+  # 固定窗口写法：
+  time_window: "date = ${target_date}"
+  # 滚动窗口写法：
+  # time_window:
+  #   end_date: ${end_date}
+  #   window_days: 30
+
+  # ── 过滤条件（可选）──────────────────────────────────────────────
+  where_dimension_values:
+    - dimension_id: user_platform
+      value: "iOS"
+  where_named_values:
+    - new_user
+
+  # ── 分组（可选）──────────────────────────────────────────────────
+  group_by: [user_register_channel]
+
+# 该指标的别名，AI 用于识别用户意图
+aliases:
+  - "别名1"
+  - "别名2"
+  - "EnglishAlias"
+
+notes:
+  - "使用注意事项（如：T+1 更新，当天数据不可用）"

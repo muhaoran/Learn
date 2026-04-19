@@ -1,0 +1,93 @@
+table_id: "dwd_evt_puof_private_domain_team_member"
+name: "私域群成员表（句子）"
+full_name: "fundx_dwd.dwd_evt_puof_private_domain_team_member_s"
+layer: DWD
+description: "句子系统的私域微信群成员快照，记录每个群的成员信息、群类型等，是分析私教课等私域群运营的核心表。替代后端研发的 dwd_evt_qw_private_domain_team_member_s"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - wxid
+  - member_wxid
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期（快照日期）"
+    nullable: false
+    is_partition: true
+    example: "2024-10-28"
+
+  - name: "wxid"
+    type: "varchar"
+    description: "群ID"
+    nullable: false
+    is_partition: false
+
+  - name: "topic"
+    type: "varchar"
+    description: "群名称"
+    nullable: true
+    is_partition: false
+
+  - name: "topic_type"
+    type: "varchar"
+    description: "群类型"
+    nullable: true
+    is_partition: false
+    example: "私教课"
+
+  - name: "member_wxid"
+    type: "varchar"
+    description: "成员的微信ID（wxid）"
+    nullable: true
+    is_partition: false
+
+  - name: "member_nick_name"
+    type: "varchar"
+    description: "成员昵称"
+    nullable: true
+    is_partition: false
+
+  - name: "is_out_team"
+    type: "int"
+    description: "成员是否已退群"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "在群中"
+      - value: "1"
+        description: "已退群"
+
+  - name: "member_contact_type"
+    type: "int"
+    description: "联系人类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "未知"
+      - value: "1"
+        description: "微信"
+      - value: "2"
+        description: "公众号"
+      - value: "3"
+        description: "企业微信"
+
+notes:
+  - "该表来源于句子系统，替代后端研发表 fundx_dwd.dwd_evt_qw_private_domain_team_member_s"
+  - "过滤有效群成员：AND is_out_team = 0 AND member_contact_type = 1"
+  - "按群类型过滤：AND topic_type = '私教课'"
+  - "礼品领取数据见 fundx_ods.ods_fundx_equitycenter_receive_record_s（列信息待补充）"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "member_wxid=wechat_id"
+    join_type: "N:1"
+    purpose: "关联私域用户基本信息（含 dj_uid、xq_uid）"

@@ -1,0 +1,14 @@
+entity_id: "user"
+name: "用户"
+description: "在平台完成注册的账户主体，是绝大多数用户行为指标的统计对象"
+
+primary_key: "user_id"
+anchor_tables:
+  holding: "dwd_ast_pub_daily_holding_detail_i"   # 持仓快照表，持仓类指标（如 AUM）的 FROM 起点
+
+aliases:
+  - "用户"
+  - "账号"
+  - "雪友"
+  - "user"
+  - "account"

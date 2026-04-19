@@ -1,0 +1,117 @@
+pattern_id: "count_distinct"
+name: "去重计数"
+description: "统计满足条件的某类实体的去重数量，是 DAU/MAU/新增用户数/发帖用户数等指标的通用计算模式"
+
+parameters:
+  entity:
+    type: Entity
+    required: true
+    description: "统计哪类实体，决定 COUNT DISTINCT 使用哪个主键字段"
+
+  event:
+    type: Event
+    required: true
+    description: "通过行为事件限定统计范围，展开为 FROM 表 + WHERE type_condition"
+
+  where_dimension_values:
+    type: "list<{dimension_id: Dimension, value: string}>"
+    required: false
+    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+
+  where_named_values:
+    type: "Dimension.NamedValue[]"
+    required: false
+    description: "按命名分群过滤，展开为 AND primary_key IN (sql_condition)；多个条件取交集（AND）"
+
+  time_window:
+    type: "date_expr | {end_date: date, window_days: integer}"
+    required: true
+    description: |
+      时间范围，支持两种形态：
+      - 固定窗口（date_expr）：直接写 SQL 条件嵌入 WHERE，如 date = '2024-01-01'
+      - 滚动窗口（{end_date, window_days}）：展开为 date > date_add('day', -window_days, DATE 'end_date') AND date <= DATE 'end_date'
+
+  group_by:
+    type: "Dimension[]"
+    required: false
+    description: "分组维度；有 sql_expr 的展开为字段直接分组，有 named_values 的展开为 CASE WHEN 分组列"
+
+sql_template: |
+  SELECT
+    ${group_by.expr, ...}
+    COUNT(DISTINCT ${entity.primary_key}) AS cnt
+  FROM ${event.source_table}
+  ${LEFT JOIN dim.source_table ON dim.join_key}             -- group_by / where_dimension_values 需要时展开
+  WHERE ${time_window}
+    ${AND event.type_condition}
+    ${AND where_dimension_values.sql_expr = value, ...}
+    ${AND where_named_values.sql_condition, ...}
+  ${GROUP BY group_by.expr, ...}
+
+example_usage:
+  - description: "计算某天的 DAU（活跃用户数）"
+    parameters:
+      entity: "user"
+      event: "active_behavior"
+      time_window: "date = '2024-01-01'"
+    generated_sql: |
+      SELECT
+        COUNT(DISTINCT user_id) AS cnt
+      FROM dwd_user_behavior
+      WHERE date = '2024-01-01'
+
+  - description: "按注册渠道分组，统计某天 DAU"
+    parameters:
+      entity: "user"
+      event: "active_behavior"
+      time_window: "date = '2024-01-01'"
+      group_by: ["user_register_channel"]
+    generated_sql: |
+      SELECT
+        r.register_channel,
+        COUNT(DISTINCT b.user_id) AS cnt
+      FROM dwd_user_behavior b
+      JOIN dwd_user_register r ON b.user_id = r.user_id
+      WHERE b.date = '2024-01-01'
+      GROUP BY r.register_channel
+
+  - description: "统计某天 iOS 平台上发帖的新用户数，按注册渠道分组"
+    parameters:
+      entity: "user"
+      event: "post_publish"
+      where_dimension_values:
+        - dimension_id: user_platform
+          value: "iOS"
+      where_named_values:
+        - new_user
+      time_window: "date = '2024-01-01'"
+      group_by: ["user_register_channel"]
+    generated_sql: |
+      SELECT
+        r.register_channel,
+        COUNT(DISTINCT b.user_id) AS cnt
+      FROM dwd_user_behavior b
+      JOIN dwd_user_register r ON b.user_id = r.user_id
+      WHERE b.behavior_type = 'create_post'
+        AND b.platform = 'iOS'
+        AND b.date = '2024-01-01'
+        AND b.user_id IN (
+          SELECT user_id
+          FROM dwd_user_register
+          WHERE register_date = '2024-01-01'
+        )
+      GROUP BY r.register_channel
+
+  - description: "计算截至 2024-01-31 的近 30 日 MAU（滚动窗口）"
+    parameters:
+      entity: "user"
+      event: "active_behavior"
+      time_window:
+        end_date: "2024-01-31"
+        window_days: 30
+    generated_sql: |
+      SELECT
+        COUNT(DISTINCT user_id) AS cnt
+      FROM dwd_user_behavior
+      WHERE date > date_add('day', -30, DATE '2024-01-31')
+        AND date <= DATE '2024-01-31'

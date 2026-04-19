@@ -1,0 +1,30 @@
+table_id: "ads_prodept_evt_weixin_relation_channel_group"
+name: "建联分渠道汇总表（新）"
+full_name: "fundx_ads.ads_prodept_evt_weixin_relation_channel_group_s"
+layer: ADS
+description: "按渠道分类统计建联数据的汇总表（新表），替代老表 data_product.product_fund_weixin_relation_channel_group_s，用于分析不同渠道的建联数量和来源"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅以表名出现，具体字段需从实际数据或研发文档补充"
+  - "该表为新表，替代老表 data_product.product_fund_weixin_relation_channel_group_s"
+  - "老表 data_product.product_fund_weixin_relation_channel_group_s 已废弃，优先使用本表"
+
+related_tables:
+  - table: "xq_ods.ods_analysis_weixin_customer_relation_s_trans"
+    join_field: "wechat_id 或 union_id"
+    join_type: "N:1"
+    purpose: "建联明细信息"
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "私域用户基本信息"

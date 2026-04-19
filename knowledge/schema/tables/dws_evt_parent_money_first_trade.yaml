@@ -1,0 +1,26 @@
+table_id: "dws_evt_parent_money_first_trade"
+name: "首购交易汇总表"
+full_name: "fundx_dws.dws_evt_parent_money_first_trade_s"
+layer: DWS
+description: "按用户聚合的首购交易汇总表，沉淀用户首次交易时间与金额，优先用于首购分析"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中以表名形式出现，字段定义需补录"
+  - "首购分析优先使用 DWS 汇总表，避免在父单明细中重复计算"
+  - "三分法首购可结合 dwd_evt_parent_money_order_s 过滤 invest_account_code='TRICHOTOMY'"
+
+related_tables:
+  - table: "fundx_dwd.dwd_evt_parent_money_order_s"
+    join_field: "uid"
+    join_type: "1:N"
+    purpose: "回溯首购订单明细"

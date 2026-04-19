@@ -1,0 +1,100 @@
+table_id: "ods_fundx_socialcrm_wechat_reach_record"
+name: "SOP发送记录表"
+full_name: "fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans"
+layer: ODS
+description: "记录企微小雪SOP的消息发送记录，包含发送时间、业务线、发送状态等，用于统计SOP触达效果"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "万级/天"
+  retention: "永久保留"
+
+primary_key:
+  - user_id
+  - external_user_id
+  - send_time
+  - business_no
+
+columns:
+  - name: "user_id"
+    type: "varchar"
+    description: "小雪（企微员工）ID"
+    nullable: false
+    is_partition: false
+
+  - name: "external_user_id"
+    type: "varchar"
+    description: "外部用户ID（客户侧）"
+    nullable: true
+    is_partition: false
+
+  - name: "send_time"
+    type: "varchar"
+    description: "发送时间"
+    nullable: true
+    is_partition: false
+
+  - name: "business_type"
+    type: "int"
+    description: "业务线"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "RM"
+      - value: "2"
+        description: "私募小雪"
+      - value: "3"
+        description: "公募小雪"
+
+  - name: "status"
+    type: "int"
+    description: "发送状态"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "待校验"
+      - value: "2"
+        description: "校验成功"
+      - value: "3"
+        description: "校验失败"
+      - value: "4"
+        description: "发送成功"
+      - value: "5"
+        description: "发送失败"
+      - value: "6"
+        description: "发送中"
+
+  - name: "business_no"
+    type: "varchar"
+    description: "SOP业务节点编号，对应具体SOP流程和步骤"
+    nullable: true
+    is_partition: false
+    example: "Process_08ollcd01_1_三分法打开"
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "公募小雪过滤：AND business_type = 3"
+  - "有效发送过滤：AND status IN (4, 6)（发送成功或发送中）"
+  - "通过 business_no 区分具体SOP流程节点，如三分法打开、点击召回等"
+  - "send_time 范围过滤用 to_date(send_time) >= '${busi_date}'"
+  - "该表为增量表，dt 为业务日期，统计时需用 to_date(send_time) 限定实际发送日期范围"
+
+related_tables:
+  - table: "fundx_ods.ods_fundx_socialcrm_flow_detail_s"
+    join_field: "external_user_id"
+    join_type: "N:N"
+    purpose: "关联SOP进入记录"
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "external_user_id=wechat_id"
+    join_type: "N:1"
+    purpose: "关联私域用户基本信息"

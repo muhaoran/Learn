@@ -1,0 +1,44 @@
+table_id: "dwd_pro_stock_base_info"
+name: "行情基础产品表"
+full_name: "xq_dwd.dwd_pro_stock_base_info_s"
+layer: DWD
+description: "行情模块使用的基础产品信息，提供 symbol 与基金产品编码映射"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - pro_code
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "symbol"
+    type: "varchar"
+    description: "行情代码（upper 后包含 F/P/TIA 等后缀）"
+    nullable: true
+    is_partition: false
+
+  - name: "pro_code"
+    type: "varchar"
+    description: "产品代码"
+    nullable: false
+    is_partition: false
+
+  - name: "pro_name"
+    type: "varchar"
+    description: "产品名称"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "行情查询常用写法：SELECT upper(symbol), pro_code, pro_name"
+  - "需加 dt 分区条件"

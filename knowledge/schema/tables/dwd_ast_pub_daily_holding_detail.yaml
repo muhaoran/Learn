@@ -1,0 +1,276 @@
+table_id: "dwd_ast_pub_daily_holding_detail"
+name: "公募持仓明细日快照表"
+full_name: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+layer: DWD
+description: "记录每个用户每天的公募基金持仓明细，包含产品信息、持仓金额、子账户信息等，每天全量快照"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "千万级/天"
+  retention: "永久保留"
+
+primary_key:
+  - uid
+  - pro_code
+  - invest_account_id
+
+columns:
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID（dj_uid）"
+    nullable: false
+    is_partition: false
+    example: "123456789"
+
+  - name: "individual_or_institution"
+    type: "int"
+    description: "用户类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "机构户"
+      - value: "1"
+        description: "个人户"
+      - value: "2"
+        description: "产品户"
+
+  - name: "private_domain_flag"
+    type: "int"
+    description: "私域用户标识"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "其他（非私域）"
+      - value: "1"
+        description: "建联用户"
+      - value: "2"
+        description: "私域渠道注册用户"
+      - value: "3"
+        description: "建联且私域渠道注册用户"
+
+  - name: "transaction_account_id"
+    type: "varchar"
+    description: "交易账号"
+    nullable: true
+    is_partition: false
+
+  - name: "pro_code"
+    type: "varchar"
+    description: "产品代码"
+    nullable: false
+    is_partition: false
+    example: "TRI001"
+
+  - name: "pro_name"
+    type: "varchar"
+    description: "产品全称"
+    nullable: true
+    is_partition: false
+
+  - name: "simple_fund_name"
+    type: "varchar"
+    description: "产品简称"
+    nullable: true
+    is_partition: false
+
+  - name: "basi_type_name_trans"
+    type: "varchar"
+    description: "产品明细分类"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "混合型"
+        description: ""
+      - value: "债券型"
+        description: ""
+      - value: "股票型"
+        description: ""
+      - value: "指数型"
+        description: ""
+      - value: "QDII"
+        description: ""
+      - value: "短期理财"
+        description: ""
+      - value: "货币型"
+        description: ""
+      - value: "FOF"
+        description: ""
+      - value: "REITs"
+        description: ""
+      - value: "券商理财"
+        description: ""
+      - value: "现金宝"
+        description: ""
+      - value: "基金通"
+        description: ""
+      - value: "场外组合"
+        description: ""
+      - value: "配置调仓型"
+        description: ""
+      - value: "蛋卷策略组合"
+        description: ""
+      - value: "批量订单型"
+        description: ""
+      - value: "投顾组合"
+        description: ""
+      - value: "有知有行"
+        description: ""
+
+  - name: "pro_type"
+    type: "varchar"
+    description: "产品类型代码"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "XJB"
+        description: "现金宝"
+      - value: "Y"
+        description: "养老金"
+      - value: "F"
+        description: "公募基金"
+      - value: "ZH"
+        description: "组合"
+      - value: "TG"
+        description: "投顾"
+      - value: "YZ"
+        description: "有知有行"
+
+  - name: "pro_type_name"
+    type: "varchar"
+    description: "产品类型名称"
+    nullable: true
+    is_partition: false
+    example: "单品"
+
+  - name: "is_money_flag"
+    type: "int"
+    description: "是否货币基金"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "0"
+        description: "非货币（包含现金宝和部分单品）"
+      - value: "1"
+        description: "货币"
+
+  - name: "plan_code"
+    type: "varchar"
+    description: "组合代码"
+    nullable: true
+    is_partition: false
+
+  - name: "ic_type"
+    type: "varchar"
+    description: "主理人类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "有知有行投顾"
+        description: ""
+      - value: "银行螺丝钉投顾"
+        description: ""
+      - value: "7分钟理财投顾"
+        description: ""
+      - value: "其他大V投顾"
+        description: ""
+      - value: "机构投顾"
+        description: ""
+      - value: "品类投顾"
+        description: ""
+
+  - name: "fund_manager"
+    type: "varchar"
+    description: "主理人名字"
+    nullable: true
+    is_partition: false
+
+  - name: "fund_code"
+    type: "varchar"
+    description: "成分基金代码"
+    nullable: true
+    is_partition: false
+
+  - name: "volume"
+    type: "decimal"
+    description: "持仓份额"
+    nullable: true
+    is_partition: false
+
+  - name: "unit_nav"
+    type: "decimal"
+    description: "单位净值"
+    nullable: true
+    is_partition: false
+
+  - name: "amount"
+    type: "decimal"
+    description: "持仓金额（元）"
+    nullable: true
+    is_partition: false
+
+  - name: "invest_account_id"
+    type: "varchar"
+    description: "子账户ID"
+    nullable: true
+    is_partition: false
+
+  - name: "invest_account_code"
+    type: "varchar"
+    description: "子账户代码"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "TRICHOTOMY"
+        description: "三分法子账户"
+      - value: "CUSTOM"
+        description: "用户自定义子账户"
+      - value: "YZYX"
+        description: "有知有行子账户"
+      - value: "DEFAULT"
+        description: "默认账户"
+
+  - name: "invest_account_name"
+    type: "varchar"
+    description: "子账户名称"
+    nullable: true
+    is_partition: false
+
+  - name: "invest_account_type"
+    type: "varchar"
+    description: "子账户类型"
+    nullable: true
+    is_partition: false
+
+  - name: "invest_status"
+    type: "varchar"
+    description: "子账户状态"
+    nullable: true
+    is_partition: false
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期（快照日期）"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "持仓金额 amount = volume * unit_nav"
+  - "过滤三分法持仓：AND invest_account_code = 'TRICHOTOMY'"
+  - "过滤非三分法持仓：AND invest_account_code != 'TRICHOTOMY'（注释中称'非三分法'）"
+  - "volume > 0 才是有效持仓，否则包含历史清零数据"
+  - "该表为全量快照，每天一份，查询时必须指定 dt"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_xq_dj_uidjoin_s"
+    join_field: "uid=dj_uid"
+    join_type: "N:1"
+    purpose: "关联平台 xq_uid"
+  - table: "fundx_dwd.dwd_pro_agent_product_info_s"
+    join_field: "pro_code"
+    join_type: "N:1"
+    purpose: "获取基金详细信息"

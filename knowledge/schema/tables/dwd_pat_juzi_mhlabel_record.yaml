@@ -1,0 +1,82 @@
+table_id: "dwd_pat_juzi_mhlabel_record"
+name: "句子+企微合并标签记录表"
+full_name: "fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+layer: DWD
+description: "句子标签和企微标签合并后的推荐标签表，同时包含黑金卡等用户分层标签，每个用户可有多条标签记录"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "千万级"
+  retention: "永久保留"
+
+primary_key:
+  - wechat_union_id
+  - label_name
+
+columns:
+  - name: "wechat_union_id"
+    type: "varchar"
+    description: "微信 union_id"
+    nullable: true
+    is_partition: false
+
+  - name: "wechat_id"
+    type: "varchar"
+    description: "企业微信用户ID"
+    nullable: true
+    is_partition: false
+
+  - name: "label_name"
+    type: "varchar"
+    description: "标签名称"
+    nullable: true
+    is_partition: false
+    example: "黑金"
+
+  - name: "label_type"
+    type: "varchar"
+    description: "标签类型（用于过滤特定分层）"
+    nullable: true
+    is_partition: false
+    example: "黑金卡"
+
+  - name: "group_name"
+    type: "varchar"
+    description: "标签分组名称"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "基金第一课招募用户(总)"
+        description: "参与过基金第一课招募的用户"
+      - value: "历史用户模式"
+        description: "历史老用户模式标签"
+
+  - name: "first_label_date"
+    type: "date"
+    description: "首次打标日期"
+    nullable: true
+    is_partition: false
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-02-07"
+
+notes:
+  - "推荐优先使用本表（合并了句子和企微两个来源的标签）"
+  - "句子老标签用 fundx_dwd.dwd_pat_juzi_v2_customer_detail_s"
+  - "企微原始标签用 fundx_ods.ods_fundx_socialcrm_wechat_customer_tag_info_s_trans"
+  - "招募期次 batch_name 计算逻辑：group_name='历史用户模式' → 拼接'历史-'+label_name，否则拼接'新招-'+label_name"
+  - "取最新招募期次建议用 ROW_NUMBER() OVER (PARTITION BY wechat_union_id ORDER BY first_label_date DESC)"
+  - "label_name 长度=8 是有效招募批次的过滤条件（见PDF中的招募SQL）"
+  - "过滤黑金卡用户：AND label_name LIKE '%黑金%' AND label_type = '黑金卡'"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "wechat_id 或 wechat_union_id"
+    join_type: "N:1"
+    purpose: "获取用户基础信息（uid、建联时间等）"

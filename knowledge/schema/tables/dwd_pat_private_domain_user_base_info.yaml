@@ -1,0 +1,90 @@
+table_id: "dwd_pat_private_domain_user_base_info"
+name: "私域用户基础信息表"
+full_name: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+layer: DWD
+description: "记录私域（企业微信）用户的基础信息，以 wechat_id 为唯一标识，关联蛋卷 uid 和平台 xq_uid"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "百万级"
+  retention: "永久保留"
+
+primary_key:
+  - wechat_id
+
+columns:
+  - name: "wechat_id"
+    type: "varchar"
+    description: "企业微信用户ID（表的唯一键）"
+    nullable: false
+    is_partition: false
+
+  - name: "wechat_union_id"
+    type: "varchar"
+    description: "微信 union_id（跨公众号/小程序的统一标识）"
+    nullable: true
+    is_partition: false
+
+  - name: "wechat_name"
+    type: "varchar"
+    description: "微信昵称"
+    nullable: true
+    is_partition: false
+
+  - name: "gender"
+    type: "varchar"
+    description: "性别"
+    nullable: true
+    is_partition: false
+
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID（dj_uid），别名 dj_uid"
+    nullable: true
+    is_partition: false
+
+  - name: "xq_uid"
+    type: "bigint"
+    description: "平台社区用户ID"
+    nullable: true
+    is_partition: false
+
+  - name: "first_snow_tag_name"
+    type: "varchar"
+    description: "首个小雪标签名称"
+    nullable: true
+    is_partition: false
+
+  - name: "first_relation_time"
+    type: "timestamp"
+    description: "首次建联时间"
+    nullable: true
+    is_partition: false
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "wechat_id 在本表唯一，一个企微用户只有一条记录"
+  - "uid（dj_uid）和 xq_uid 可能为 NULL，表示尚未与蛋卷/平台账户关联"
+  - "建联时间以 first_relation_time 为准"
+
+related_tables:
+  - table: "fundx_ads.ads_prodept_evt_weixin_relation_channel_group_s"
+    join_field: "wechat_id 或 wechat_union_id"
+    join_type: "N:1"
+    purpose: "获取建联渠道分组信息（新表，推荐）"
+  - table: "fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
+    join_field: "wechat_id 或 wechat_union_id"
+    join_type: "1:N"
+    purpose: "获取用户标签"
+  - table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+    join_field: "uid=uid"
+    join_type: "1:N"
+    purpose: "关联持仓信息"

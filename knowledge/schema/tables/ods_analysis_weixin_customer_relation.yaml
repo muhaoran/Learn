@@ -1,0 +1,31 @@
+table_id: "ods_analysis_weixin_customer_relation"
+name: "企微建联信息表"
+full_name: "xq_ods.ods_analysis_weixin_customer_relation_s_trans"
+layer: ODS
+description: "记录企业微信中用户与小雪建立联系的原始数据，包含建联时间、渠道等信息，是分析私域建联来源的基础表"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅以表名出现，具体字段需从实际数据或研发文档补充"
+  - "建联渠道分析时，与 fundx_dim.dim_dic_juzi_channel_info_a 关联获取渠道名称（state 字段匹配）"
+  - "如需按渠道分组的汇总数据，优先使用 fundx_ads.ads_prodept_evt_weixin_relation_channel_group_s"
+  - "私域用户基本信息（含 first_relation_time 首次建联时间）见 fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "wechat_union_id"
+    join_type: "N:1"
+    purpose: "私域用户详细信息，含首次建联时间"
+  - table: "fundx_dim.dim_dic_juzi_channel_info_a"
+    join_field: "state"
+    join_type: "N:1"
+    purpose: "建联渠道名称（state-remark 映射）"

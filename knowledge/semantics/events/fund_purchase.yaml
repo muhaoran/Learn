@@ -1,0 +1,13 @@
+event_id: "fund_purchase"
+name: "公募买入"
+entity: "user"
+description: "用户在公募业务中的买入行为，口径为父单中的主动买入交易"
+
+source_table: "fundx_dwd.dwd_evt_parent_money_order_s"
+type_condition: "is_private = 0 AND trade_mode IN (1,2,3,4,5)"
+
+aliases:
+  - "公募买入"
+  - "基金买入"
+  - "下单"
+  - "purchase"

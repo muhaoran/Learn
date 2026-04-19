@@ -1,0 +1,63 @@
+table_id: "product_fund_uid_register_source_cleaning"
+name: "注册渠道清洗表"
+full_name: "data_product.product_fund_uid_register_source_cleaning_s"
+layer: ADS
+description: "按用户沉淀注册来源清洗结果，包含开户日期与渠道类型，支持渠道归因分析"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - uid
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID"
+    nullable: false
+    is_partition: false
+
+  - name: "open_date"
+    type: "date"
+    description: "开户日期"
+    nullable: true
+    is_partition: false
+
+  - name: "flavor"
+    type: "varchar"
+    description: "注册渠道号/渠道标识"
+    nullable: true
+    is_partition: false
+
+  - name: "flavor_type"
+    type: "varchar"
+    description: "渠道类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "外部渠道"
+        description: "外部投放或站外来源"
+      - value: "内部渠道"
+        description: "站内运营来源"
+      - value: "自然流量"
+        description: "非投放自然进入"
+
+notes:
+  - "flavor_type 可能为 NULL，需要在分析时单独归类"
+  - "用于注册渠道分类口径"
+
+related_tables:
+  - table: "fundx_dim.dim_dic_channel_info_s"
+    join_field: "flavor=channel_no"
+    join_type: "N:1"
+    purpose: "补充渠道名称和业务类型"

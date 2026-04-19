@@ -1,0 +1,63 @@
+table_id: "dwd_evt_plan_auto_invest"
+name: "定投计划表"
+full_name: "fundx_dwd.dwd_evt_plan_auto_invest_s"
+layer: DWD
+description: "记录用户的基金定投计划，包含计划创建时间、产品代码等信息，用于分析定投计划开通情况"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - uid
+  - pro_code
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID（dj_uid）"
+    nullable: false
+    is_partition: false
+
+  - name: "create_time"
+    type: "varchar"
+    description: "定投计划创建时间（字符串格式）"
+    nullable: true
+    is_partition: false
+    example: "2025-01-20 10:30:00"
+
+  - name: "pro_code"
+    type: "varchar"
+    description: "定投产品代码"
+    nullable: false
+    is_partition: false
+    enum_values:
+      - value: "TRI001"
+        description: "三分法定投"
+      - value: "TRI002"
+        description: "有知有行养老计划"
+
+notes:
+  - "查询首次创建三分法定投计划：pro_code = 'TRI001' AND substr(create_time,1,10) = dt"
+  - "三分法账户区分：通过 invest_account_id 关联 ods_fuser_user_invest_account_s_trans 判断 account_code = 'TRICHOTOMY'"
+  - "原始表（含更多字段）：fundx_ods.ods_forder_plan_auto_invest_s_trans"
+  - "定投计划修改记录：fundx_ods.ods_forder_plan_auto_invest_operation_log_s_trans"
+
+related_tables:
+  - table: "fundx_dwd.dwd_evt_plan_auto_invest_record_s"
+    join_field: "uid, pro_code"
+    join_type: "1:N"
+    purpose: "获取实际定投执行记录"
+  - table: "fundx_dwd.dwd_evt_parent_money_order_s"
+    join_field: "uid"
+    join_type: "1:N"
+    purpose: "关联交易订单"

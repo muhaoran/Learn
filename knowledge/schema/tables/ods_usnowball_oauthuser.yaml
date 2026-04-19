@@ -1,0 +1,55 @@
+table_id: "ods_usnowball_oauthuser"
+name: "UC账户映射表"
+full_name: "xq_ods.ods_usnowball_oauthuser_s_trans"
+layer: ODS
+description: "平台社区账户与蛋卷账户绑定关系明细，包含 source='dj' 的强关系映射"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - open_id
+  - user_id
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "open_id"
+    type: "varchar"
+    description: "开放平台用户ID（source='dj' 时可转 dj_uid）"
+    nullable: true
+    is_partition: false
+
+  - name: "user_id"
+    type: "bigint"
+    description: "平台用户ID（xq_uid）"
+    nullable: true
+    is_partition: false
+
+  - name: "source"
+    type: "varchar"
+    description: "来源系统"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "dj"
+        description: "蛋卷来源"
+
+notes:
+  - "强关系口径：source='dj'，cast(open_id as bigint) 作为 dj_uid"
+  - "一对一强关系外，仍存在多对多映射场景，需结合 dwd_pat_xq_dj_uidjoin_s"
+  - "dwd_pat_xq_dj_uidjoin_s 在 PDF 中仅出现表名，字段待补充"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_xq_dj_uidjoin_s"
+    join_field: "dj_uid/xq_uid"
+    join_type: "N:N"
+    purpose: "平台-蛋卷多对多ID映射补充"

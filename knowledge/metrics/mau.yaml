@@ -1,0 +1,20 @@
+metric_id: "mau"
+name: "月活跃用户数"
+description: "某自然月内有任意行为的去重用户数，去重维度为 user_id（同一用户在月内多天活跃只计一次）"
+
+pattern: "count_distinct"
+
+pattern_params:
+  entity: "user"
+  event: "active_behavior"
+  time_window: "date >= ${month_start_date} AND date <= ${month_end_date}"
+
+aliases:
+  - "MAU"
+  - "月活"
+  - "月活跃用户数"
+  - "Monthly Active User"
+
+notes:
+  - "时间范围取自然月边界（月初到月末），不用固定30天，避免跨月误差"
+  - "与 DAU/MAU 比值可得粘性（Stickiness = DAU/MAU）"

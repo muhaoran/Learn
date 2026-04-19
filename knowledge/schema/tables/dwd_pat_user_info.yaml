@@ -1,0 +1,19 @@
+table_id: "dwd_pat_user_info"
+name: "用户基础信息表"
+full_name: "fundx_dwd.dwd_pat_user_info_s"
+layer: DWD
+description: "公募业务用户基础信息宽表，用于注册与开户分析中的用户属性补充"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅出现表名，字段定义需补录"
+  - "常用于用户画像与用户基础属性查询"

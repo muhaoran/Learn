@@ -45,9 +45,9 @@ SQL 生成后，输出给用户前触发。
 
 **方法**:
 1. 提取 SQL 中的所有表名
-2. 在 `knowledge/data_assets/tables/` 中查找
+2. 在 `knowledge/schema/tables/` 中查找对应的 yaml 文件
 3. 提取 SQL 中的所有字段名
-4. 在表文档中验证字段是否存在
+4. 在表 yaml 的 `columns` 列表中验证字段是否存在
 
 **示例**:
 ```sql
@@ -114,13 +114,16 @@ FROM new_users INNER JOIN retention_users ON ...
 **示例**:
 ```sql
 -- 需求: 最近 7 天（含今天）
--- ✅ 正确
-WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
-  AND date <= CURRENT_DATE()
+-- ✅ 正确（Trino 语法）
+WHERE date >= date_add('day', -6, current_date)
+  AND date <= current_date
 
 -- ❌ 错误：少了一天
-WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
-  AND date < CURRENT_DATE()
+WHERE date >= date_add('day', -7, current_date)
+  AND date < current_date
+
+-- ❌ 错误：MySQL 语法，不能用
+WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
 ```
 
 ### 步骤 4: 口径验证
@@ -261,14 +264,14 @@ WHERE
 
 **修改建议**:
 ```sql
--- 修改 INNER JOIN 为 LEFT JOIN
+-- 修改 INNER JOIN 为 LEFT JOIN，并修正为 Trino 语法
 FROM 
     dwd_user_register r
 LEFT JOIN 
     dwd_user_behavior b
 ON 
     r.user_id = b.user_id
-    AND b.date = DATE_ADD(r.register_date, INTERVAL 1 DAY)
+    AND b.date = date_add('day', 1, r.register_date)
 ```
 
 ### 示例 3: 性能问题
@@ -308,7 +311,7 @@ WHERE
 
 ### 2. 对照业务定义
 
-计算逻辑必须严格对照业务定义文档。
+计算逻辑必须严格对照 `knowledge/metrics/` 和 `knowledge/patterns/` 中的定义，不能自行修改口径。
 
 ### 3. 性能优先
 

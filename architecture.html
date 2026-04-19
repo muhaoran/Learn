@@ -1,0 +1,3210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChatBI 系统架构</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232733;
+    --border: #2e3345;
+    --text: #e4e6ef;
+    --text-dim: #8b8fa3;
+    --accent: #6c7ee1;
+    --accent-light: #8b9cf0;
+    --green: #4ade80;
+    --green-dim: #166534;
+    --blue: #60a5fa;
+    --blue-dim: #1e3a5f;
+    --orange: #fb923c;
+    --orange-dim: #5c3310;
+    --purple: #c084fc;
+    --purple-dim: #4c1d95;
+    --pink: #f472b6;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --cyan: #22d3ee;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+  /* Header */
+  header {
+    padding: 60px 0 40px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(108,126,225,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  header h1 {
+    font-size: 44px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-light), var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  header .subtitle {
+    font-size: 20px;
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0 auto 32px;
+  }
+  .hero-stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    flex-wrap: wrap;
+  }
+  .hero-stat {
+    text-align: center;
+  }
+  .hero-stat .num {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent-light);
+  }
+  .hero-stat .label {
+    font-size: 15px;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* Section */
+  section { padding: 48px 0; }
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .section-desc {
+    color: var(--text-dim);
+    margin-bottom: 32px;
+    font-size: 17px;
+    max-width: 720px;
+  }
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0;
+  }
+
+  /* Core Flow (simple summary) */
+  .core-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 24px 0;
+    flex-wrap: wrap;
+  }
+  .flow-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 28px;
+    text-align: center;
+    min-width: 200px;
+    transition: all 0.2s;
+  }
+  .flow-node:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(108,126,225,0.15);
+  }
+  .flow-node .icon { font-size: 32px; margin-bottom: 8px; }
+  .flow-node .name { font-weight: 600; font-size: 18px; }
+  .flow-node .desc { font-size: 15px; color: var(--text-dim); margin-top: 4px; }
+  .flow-arrow {
+    font-size: 26px;
+    color: var(--accent);
+    padding: 0 8px;
+    flex-shrink: 0;
+  }
+
+  /* System Flowchart (detailed) */
+  .sys-flow {
+    display: flex;
+    gap: 32px;
+    position: relative;
+    margin-top: 16px;
+  }
+  .sys-flow-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+  .sf-node {
+    width: 100%;
+    max-width: 640px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    position: relative;
+    transition: all 0.2s;
+    box-sizing: border-box;
+  }
+  .sf-node:hover {
+    border-color: rgba(108,126,225,0.4);
+    box-shadow: 0 4px 16px rgba(108,126,225,0.08);
+  }
+  .sf-node-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .sf-node-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .sf-node-title { font-size: 17px; font-weight: 700; }
+  .sf-node-skill {
+    font-size: 13px; color: var(--accent-light); margin-left: auto;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .sf-node-body {
+    font-size: 14px; color: var(--text-dim); line-height: 1.6;
+    padding-left: 48px;
+  }
+  .sf-node-tags {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    padding-left: 48px; margin-top: 6px;
+  }
+  .sf-node-tags span {
+    font-size: 12px; padding: 3px 10px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text-dim);
+  }
+  .sf-node.sf-start {
+    background: linear-gradient(135deg, rgba(108,126,225,0.1), var(--surface));
+    border-color: rgba(108,126,225,0.3);
+    text-align: center;
+    padding: 16px 20px;
+  }
+  .sf-node.sf-start .sf-node-head { justify-content: center; margin-bottom: 0; }
+  .sf-node.sf-end {
+    background: linear-gradient(135deg, rgba(74,222,128,0.08), var(--surface));
+    border-color: rgba(74,222,128,0.3);
+    text-align: center;
+    padding: 16px 20px;
+  }
+  .sf-node.sf-end .sf-node-head { justify-content: center; margin-bottom: 0; }
+
+  .sf-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 3px 0;
+    color: var(--accent);
+    font-size: 18px;
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+  }
+  .sf-connector .sf-conn-line {
+    width: 2px; height: 14px; background: var(--border);
+  }
+  .sf-connector .sf-conn-arrow { line-height: 1; }
+
+  .sf-decision {
+    width: 100%;
+    max-width: 640px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+  }
+  .sf-diamond {
+    background: var(--surface2);
+    border: 2px solid var(--yellow);
+    border-radius: var(--radius-sm);
+    padding: 12px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--yellow);
+    text-align: center;
+    position: relative;
+    transform: none;
+    width: 100%;
+    max-width: 340px;
+    box-sizing: border-box;
+  }
+  .sf-diamond::before {
+    content: '◇';
+    margin-right: 6px;
+    font-size: 13px;
+  }
+  /* ── Decision branches: main flow straight down, loopback exits to the side ── */
+  .sf-branches {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 640px;
+    position: relative;
+    box-sizing: border-box;
+  }
+  .sf-branches-divider { display: none; }
+
+  /* Forward branch: centered, continues the main vertical flow */
+  .sf-branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    width: 100%;
+    max-width: 300px;
+  }
+  .sf-branch::before {
+    content: '';
+    display: block;
+    width: 2px;
+    height: 14px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .sf-branch-label {
+    font-size: 13px; font-weight: 700; padding: 5px 14px;
+    border-radius: 4px; margin-bottom: 4px;
+  }
+  .sf-branch-label.yes { background: rgba(74,222,128,0.12); color: var(--green); }
+  .sf-branch-label.no { background: rgba(248,113,113,0.12); color: var(--red); }
+  .sf-branch-line { width: 2px; height: 10px; background: var(--border); }
+  .sf-branch-content {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: center;
+    width: 100%;
+    line-height: 1.5;
+    box-sizing: border-box;
+  }
+  .sf-branch-merge {
+    width: 2px; flex: 1; min-height: 10px; background: var(--border);
+  }
+
+  /* ── Horizontal connector: diamond right edge → loopback card ── */
+  .sf-branches::before {
+    content: '';
+    position: absolute;
+    top: -22px;
+    left: calc(50% + 172px);
+    width: calc(50% - 172px + 16px);
+    height: 2px;
+    background: var(--orange);
+  }
+  /* ► arrow at the loopback card entrance */
+  .sf-branches::after {
+    content: '';
+    position: absolute;
+    top: -28px;
+    left: calc(100% + 8px);
+    width: 0; height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 8px solid var(--orange);
+  }
+
+  /* Loopback branch: side exit card, positioned OUTSIDE the main flow to the right */
+  .sf-branch.loopback {
+    position: absolute;
+    left: calc(100% + 20px);
+    top: -32px;
+    width: 190px;
+    max-width: 190px;
+    border: 1px solid rgba(251,146,60,0.25);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    padding: 10px 12px;
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .sf-branch.loopback::before,
+  .sf-branch.loopback::after { content: none; }
+  .sf-branch.loopback .sf-branch-label {
+    display: inline-block;
+    margin-bottom: 6px;
+  }
+  .sf-branch.loopback .sf-branch-line { display: none; }
+  .sf-branch.loopback .sf-branch-merge { display: none; }
+  .sf-branch.loopback .sf-branch-content {
+    border: none;
+    padding: 0;
+    background: none;
+    width: auto;
+  }
+
+  .sf-loopback {
+    margin-top: 10px;
+    padding: 6px 10px;
+    border-radius: 5px;
+    background: rgba(251,146,60,0.06);
+    border: 1px solid rgba(251,146,60,0.2);
+    font-size: 12px;
+    color: var(--orange);
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: center;
+  }
+
+  /* Visual return arrow — flowchart-style polyline */
+  .sf-loop-group {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .sf-loop-return {
+    position: absolute;
+    pointer-events: none;
+    right: -220px;
+    top: 30px;
+    bottom: 60px;
+    width: 220px;
+  }
+  .sf-loop-return .loop-line {
+    position: absolute;
+    inset: 0;
+    border-top: 2px solid var(--orange);
+    border-right: 2px solid var(--orange);
+    border-bottom: none;
+    border-left: none;
+    border-radius: 0 8px 0 0;
+  }
+  .sf-loop-return .loop-arrow {
+    position: absolute;
+    top: -6px;
+    left: -8px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 10px solid var(--orange);
+  }
+  .sf-loop-return .loop-label {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+    font-size: 11px;
+    color: var(--orange);
+    white-space: nowrap;
+    font-weight: 600;
+    letter-spacing: 1px;
+    opacity: 0.8;
+  }
+  .sf-loop-return.far {
+    right: -250px;
+    width: 250px;
+    top: 20px;
+    bottom: 30px;
+  }
+  .sf-loop-return.far .loop-label {
+    right: 8px;
+  }
+
+  @media (max-width: 768px) {
+    .sys-flow { flex-direction: column; gap: 24px; }
+    .sf-loop-return { display: none; }
+    .sf-node, .sf-decision, .sf-branches, .sf-loop-group { max-width: 100%; }
+    .sf-branch.loopback {
+      position: static;
+      width: 100%; max-width: 100%;
+      margin-top: 12px;
+    }
+    .sf-branch.loopback::before,
+    .sf-branch.loopback::after { display: none; }
+    .sf-branches::before,
+    .sf-branches::after { display: none; }
+  }
+
+  /* Architecture Layers */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .arch-layer {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .arch-layer:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 20px rgba(108,126,225,0.1);
+  }
+  .layer-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 24px 20px;
+    text-align: center;
+    gap: 8px;
+  }
+  .layer-label .tag {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 4px;
+  }
+  .layer-label .layer-name {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .layer-label .layer-role {
+    font-size: 15px;
+    opacity: 0.8;
+  }
+  .layer-content {
+    padding: 20px 24px;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .layer-content p {
+    font-size: 16px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .layer-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .layer-item {
+    font-size: 14px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+
+  /* Layer colors */
+  .layer-d .layer-label { background: linear-gradient(135deg, #1e3a5f, #1a2d4a); }
+  .layer-d .tag { background: var(--blue); color: #000; }
+  .layer-d .layer-item { border-color: var(--blue-dim); color: var(--blue); background: rgba(96,165,250,0.08); }
+
+  .layer-c .layer-label { background: linear-gradient(135deg, #2d1854, #1f1340); }
+  .layer-c .tag { background: var(--purple); color: #000; }
+  .layer-c .layer-item { border-color: var(--purple-dim); color: var(--purple); background: rgba(192,132,252,0.08); }
+
+  .layer-b .layer-label { background: linear-gradient(135deg, #5c3310, #3d2008); }
+  .layer-b .tag { background: var(--orange); color: #000; }
+  .layer-b .layer-item { border-color: var(--orange-dim); color: var(--orange); background: rgba(251,146,60,0.08); }
+
+  .layer-a .layer-label { background: linear-gradient(135deg, #166534, #0f3d20); }
+  .layer-a .tag { background: var(--green); color: #000; }
+  .layer-a .layer-item { border-color: var(--green-dim); color: var(--green); background: rgba(74,222,128,0.08); }
+
+  /* Retrieval Path */
+  .retrieval-path {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+  .retrieval-step {
+    flex: 1;
+    min-width: 180px;
+    position: relative;
+    padding: 20px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .retrieval-step .step-num {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .retrieval-step .step-title {
+    font-weight: 600;
+    font-size: 17px;
+    margin-bottom: 6px;
+  }
+  .retrieval-step .step-desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .retrieval-step .step-path {
+    font-size: 13px;
+    color: var(--accent-light);
+    margin-top: 8px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    word-break: break-all;
+  }
+  .r-arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    color: var(--accent);
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .step-blue .step-num { background: var(--blue); color: #000; }
+  .step-purple .step-num { background: var(--purple); color: #000; }
+  .step-orange .step-num { background: var(--orange); color: #000; }
+  .step-green .step-num { background: var(--green); color: #000; }
+
+  /* Workflow */
+  .workflow-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .workflow-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .workflow-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(108,126,225,0.1);
+  }
+  .workflow-card .step-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .workflow-card .card-icon { font-size: 26px; margin-bottom: 12px; }
+  .workflow-card h3 { font-size: 19px; font-weight: 600; margin-bottom: 8px; }
+  .workflow-card p { font-size: 15px; color: var(--text-dim); line-height: 1.6; }
+  .workflow-card .card-ref {
+    margin-top: 12px;
+    font-size: 14px;
+    color: var(--accent-light);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Skills */
+  .skills-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .skill-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    text-align: center;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .skill-chip:hover {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+  .skill-chip .chip-num {
+    font-size: 13px;
+    color: var(--accent-light);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .skill-chip .chip-name {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* Example Flow */
+  .example-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .example-header {
+    padding: 16px 24px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 17px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .example-body {
+    padding: 24px;
+  }
+  .example-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 28px;
+  }
+  .example-timeline::before {
+    content: '';
+    position: absolute;
+    left: 9px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: var(--border);
+  }
+  .tl-item {
+    position: relative;
+    padding: 12px 0 12px 24px;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: -22px;
+    top: 18px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--bg);
+  }
+  .tl-item.done::before {
+    background: var(--accent);
+  }
+  .tl-label {
+    font-size: 14px;
+    color: var(--accent-light);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .tl-content {
+    font-size: 16px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .tl-content code {
+    background: var(--surface2);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 14px;
+    color: var(--cyan);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .tl-content .sql-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-top: 8px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .sql-keyword { color: var(--purple); font-weight: 600; }
+  .sql-func { color: var(--blue); }
+  .sql-string { color: var(--green); }
+  .sql-comment { color: var(--text-dim); font-style: italic; }
+  .sql-number { color: var(--orange); }
+  .sql-field { color: var(--cyan); }
+
+  /* Directory Tree */
+  .dir-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .dir-group {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .dir-group:hover {
+    border-color: rgba(108,126,225,0.4);
+  }
+  .dir-group-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .dir-group-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .dir-group-info { flex: 1; }
+  .dir-group-name {
+    font-size: 17px;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dir-group-desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+  .dir-group-badge {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+  }
+  .dir-group-body {
+    padding: 4px 0;
+  }
+  .dir-entry {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    align-items: center;
+    padding: 6px 20px 6px 20px;
+    gap: 0;
+    transition: background 0.1s;
+  }
+  .dir-entry:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  .dir-entry-icon {
+    font-size: 16px;
+    text-align: center;
+    color: var(--text-dim);
+    width: 44px;
+  }
+  .dir-entry-name {
+    font-size: 15px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .dir-entry-name.is-dir { color: var(--blue); font-weight: 600; }
+  .dir-entry-name.is-file { color: var(--text); }
+  .dir-entry-desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: right;
+    padding-left: 16px;
+    white-space: nowrap;
+  }
+  .dir-sub-group {
+    margin: 4px 0 4px 44px;
+    border-left: 2px solid var(--border);
+    padding-left: 0;
+  }
+  .dir-sub-group .dir-entry {
+    grid-template-columns: 32px 1fr auto;
+    padding-left: 12px;
+  }
+  .dir-sub-group .dir-entry-icon { width: 32px; }
+  .dir-sub-group .dir-sub-group {
+    margin-left: 32px;
+  }
+  .dir-sub-group .dir-sub-group .dir-entry {
+    padding-left: 12px;
+  }
+  .dir-layer-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  /* Root files row */
+  .dir-root-files {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 20px;
+  }
+  .dir-root-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 14px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .dir-root-chip .chip-icon { font-size: 15px; }
+  .dir-root-chip .chip-file { color: var(--text); }
+  .dir-root-chip .chip-desc { color: var(--text-dim); font-family: inherit; }
+
+  /* Rules */
+  .rules-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .rule-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .rule-card h4 {
+    font-size: 17px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .rule-list {
+    list-style: none;
+    font-size: 15px;
+    color: var(--text-dim);
+  }
+  .rule-list li {
+    padding: 4px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .rule-list .check { color: var(--green); flex-shrink: 0; }
+  .rule-list .cross { color: var(--red); flex-shrink: 0; }
+
+  /* Composable formula */
+  .formula-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    text-align: center;
+    margin: 24px 0;
+  }
+  .formula {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .formula .op { color: var(--text-dim); font-size: 26px; }
+  .formula .part {
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    border: 1px solid;
+  }
+  .formula .p-pattern { border-color: var(--purple-dim); color: var(--purple); background: rgba(192,132,252,0.08); }
+  .formula .p-semantic { border-color: var(--orange-dim); color: var(--orange); background: rgba(251,146,60,0.08); }
+  .formula .p-result { border-color: var(--blue-dim); color: var(--blue); background: rgba(96,165,250,0.08); }
+  .formula-note {
+    font-size: 16px;
+    color: var(--text-dim);
+    margin-top: 8px;
+  }
+
+  /* Feedback */
+  .feedback-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    padding: 16px 0;
+  }
+  .fb-node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .fb-node .fb-icon { font-size: 26px; margin-bottom: 6px; }
+  .fb-node .fb-name { font-size: 16px; font-weight: 600; }
+  .fb-arrow { padding: 0 8px; color: var(--accent); font-size: 22px; }
+
+  /* Footer */
+  footer {
+    padding: 40px 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 15px;
+    border-top: 1px solid var(--border);
+    margin-top: 32px;
+  }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+    width: fit-content;
+  }
+  .tab-btn {
+    padding: 10px 22px;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Flow tab panels: flex column centered */
+  .sys-flow-main .tab-container { width: 100%; }
+  .sys-flow-main .tab-panel { flex-direction: column; align-items: center; gap: 0; }
+  .sys-flow-main .tab-panel.active { display: flex; }
+  .sf-flow-hint {
+    width: 100%;
+    max-width: 640px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-dim);
+    margin-top: 16px;
+    box-sizing: border-box;
+  }
+  .sf-flow-desc {
+    width: 100%;
+    max-width: 640px;
+    text-align: center;
+    margin-bottom: 12px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    header h1 { font-size: 32px; }
+    .arch-layer { grid-template-columns: 1fr; }
+    .workflow-grid { grid-template-columns: 1fr; }
+    .rules-grid { grid-template-columns: 1fr; }
+    .retrieval-path { flex-direction: column; align-items: stretch; }
+    .r-arrow { justify-content: center; transform: rotate(90deg); padding: 4px 0; }
+    .hero-stats { gap: 24px; }
+    .formula { font-size: 18px; gap: 10px; }
+    .formula .part { padding: 6px 14px; font-size: 16px; }
+    .dir-container > div:last-child { grid-template-columns: 1fr !important; }
+    .dir-entry-desc { display: none; }
+    .skill-io-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Skill Detail Cards */
+  .skill-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .skill-detail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: all 0.2s;
+  }
+  .skill-detail:hover { border-color: rgba(108,126,225,0.4); }
+  .skill-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .skill-detail-header:hover { background: rgba(255,255,255,0.02); }
+  .skill-num-badge {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 800;
+    flex-shrink: 0;
+    color: #fff;
+  }
+  .skill-detail-info { flex: 1; }
+  .skill-detail-name { font-size: 18px; font-weight: 700; }
+  .skill-detail-desc { font-size: 15px; color: var(--text-dim); margin-top: 2px; }
+  .skill-detail-toggle {
+    font-size: 18px; color: var(--text-dim); transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .skill-detail.open .skill-detail-toggle { transform: rotate(180deg); }
+  .skill-detail-body {
+    display: none;
+    padding: 0 20px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .skill-detail.open .skill-detail-body { display: block; }
+  .skill-io-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr 1fr;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .skill-io-box {
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+  }
+  .skill-io-box h5 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .skill-io-box ul {
+    list-style: none;
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+  .skill-io-box li::before {
+    content: '·';
+    margin-right: 6px;
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .skill-io-input { background: rgba(96,165,250,0.06); }
+  .skill-io-input h5 { color: var(--blue); }
+  .skill-io-process { background: rgba(192,132,252,0.06); }
+  .skill-io-process h5 { color: var(--purple); }
+  .skill-io-output { background: rgba(74,222,128,0.06); }
+  .skill-io-output h5 { color: var(--green); }
+
+  /* Pipeline (knowledge import) */
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+  .pipe-step {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 0;
+    position: relative;
+  }
+  .pipe-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .pipe-icon-wrap {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .pipe-line {
+    width: 2px;
+    flex: 1;
+    background: var(--border);
+  }
+  .pipe-right {
+    padding: 4px 0 24px 12px;
+  }
+  .pipe-title {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .pipe-desc {
+    font-size: 15px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+  .pipe-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .pipe-tag {
+    font-size: 13px;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: var(--surface2);
+  }
+
+  /* Feedback detail */
+  .fb-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .fb-detail-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .fb-detail-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 17px;
+  }
+  .fb-detail-body {
+    padding: 16px 20px;
+  }
+  .fb-field {
+    margin-bottom: 12px;
+  }
+  .fb-field-label {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+  .fb-field-value {
+    font-size: 15px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+  .fb-flow-arrow-down {
+    text-align: center;
+    padding: 6px 0;
+    color: var(--accent);
+    font-size: 22px;
+  }
+
+  /* Skills overview grid */
+  .skills-overview {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .skills-overview .skill-ov {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .skills-overview .skill-ov:hover {
+    border-color: rgba(108,126,225,0.4);
+    transform: translateY(-2px);
+  }
+  .skills-overview .skill-ov.skill-highlight {
+    grid-column: 1 / -1;
+    border-color: rgba(251,191,36,0.3);
+    background: linear-gradient(135deg, rgba(251,191,36,0.04), var(--surface));
+  }
+  .skill-ov-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .skill-ov-num {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0;
+  }
+  .skill-ov-title { font-size: 17px; font-weight: 700; }
+  .skill-ov-trigger {
+    font-size: 13px; color: var(--accent-light); margin-bottom: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .skill-ov p { font-size: 15px; color: var(--text-dim); line-height: 1.5; }
+  .skill-ov-io {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+  }
+  .skill-ov-io span {
+    font-size: 13px; padding: 3px 10px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface2);
+  }
+
+  /* Knowledge import pipeline */
+  .ki-formats {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px;
+  }
+  .ki-format-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 14px; color: var(--text);
+    transition: all 0.15s;
+  }
+  .ki-format-chip:hover { border-color: var(--accent); }
+  .ki-pipeline {
+    display: flex; flex-direction: column; gap: 0; position: relative;
+    margin-bottom: 28px;
+  }
+  .ki-step {
+    display: grid; grid-template-columns: 52px 1fr; gap: 0;
+  }
+  .ki-step-left {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .ki-step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0;
+    position: relative; z-index: 1;
+  }
+  .ki-step-line { width: 2px; flex: 1; background: var(--border); }
+  .ki-step-right { padding: 2px 0 20px 12px; }
+  .ki-step-title { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+  .ki-step-desc { font-size: 14px; color: var(--text-dim); line-height: 1.6; }
+  .ki-mapping-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 12px;
+  }
+  .ki-mapping-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .ki-map-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    font-size: 14px;
+  }
+  .ki-map-card .from { color: var(--text-dim); margin-bottom: 4px; }
+  .ki-map-card .arrow-down { color: var(--accent); text-align: center; padding: 2px 0; font-size: 16px; }
+  .ki-map-card .to {
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 13px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Feedback detail enhanced */
+  .fb-channels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+  .fb-channel {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+  }
+  .fb-channel-header {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 700; font-size: 16px;
+  }
+  .fb-channel-body { padding: 14px 18px; }
+  .fb-channel-body .fb-trigger {
+    font-size: 14px; color: var(--accent-light); margin-bottom: 10px;
+    font-style: italic;
+  }
+  .fb-channel-body .fb-fields {
+    list-style: none; font-size: 14px; color: var(--text-dim); line-height: 1.9;
+  }
+  .fb-channel-body .fb-fields li::before {
+    content: ''; display: inline-block; width: 6px; height: 6px;
+    border-radius: 50%; margin-right: 8px; vertical-align: middle;
+    background: var(--dot-color, var(--text-dim));
+  }
+  .fb-channel-body .fb-action {
+    margin-top: 10px; font-size: 14px; padding: 8px 12px;
+    border-radius: var(--radius-sm); border: 1px dashed var(--border);
+    color: var(--text-dim);
+  }
+  .fb-error-loc {
+    margin-bottom: 24px;
+  }
+  .fb-error-loc-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 12px;
+  }
+  .fb-checkpoints {
+    display: flex; gap: 0; align-items: stretch; flex-wrap: wrap;
+  }
+  .fb-checkpoint {
+    flex: 1; min-width: 140px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px; text-align: center;
+    transition: all 0.15s;
+  }
+  .fb-checkpoint:hover { border-color: var(--accent); }
+  .fb-checkpoint .cp-layer {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 8px; border-radius: 4px;
+    display: inline-block; margin-bottom: 6px;
+  }
+  .fb-checkpoint .cp-question {
+    font-size: 14px; color: var(--text-dim); line-height: 1.5;
+  }
+  .fb-cp-arrow {
+    display: flex; align-items: center; padding: 0 4px;
+    color: var(--accent); font-size: 18px;
+  }
+  .fb-root-causes {
+    margin-bottom: 24px;
+  }
+  .fb-root-causes-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 12px;
+  }
+  .fb-rc-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+  }
+  .fb-rc-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    font-size: 14px; color: var(--text-dim);
+  }
+  .fb-rc-item .rc-icon {
+    font-size: 18px; flex-shrink: 0; margin-top: 1px;
+  }
+  .fb-rc-item .rc-cause { font-weight: 600; color: var(--text); margin-bottom: 2px; }
+  .fb-rc-item .rc-action { font-size: 13px; color: var(--accent-light); font-family: 'SF Mono', 'Fira Code', monospace; }
+  .fb-closed-loop {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap;
+  }
+  .fb-cl-node {
+    text-align: center; padding: 10px 16px;
+  }
+  .fb-cl-node .cl-icon { font-size: 24px; margin-bottom: 4px; }
+  .fb-cl-node .cl-label { font-size: 14px; color: var(--text-dim); }
+  .fb-cl-arrow { padding: 0 6px; color: var(--accent); font-size: 20px; }
+
+  @media (max-width: 768px) {
+    .skills-overview { grid-template-columns: 1fr; }
+    .skills-overview .skill-ov.skill-highlight { grid-column: 1; }
+    .ki-mapping-grid { grid-template-columns: 1fr; }
+    .fb-channels { grid-template-columns: 1fr; }
+    .fb-checkpoints { flex-direction: column; }
+    .fb-cp-arrow { justify-content: center; transform: rotate(90deg); padding: 4px 0; }
+    .fb-rc-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Animations */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s ease;
+  }
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="container">
+    <h1>ChatBI 系统架构</h1>
+    <p class="subtitle">智能数据分析助手 — 用自然语言描述需求，AI 基于结构化知识库自动生成准确的 Trino SQL</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="num">4 层</div>
+        <div class="label">可组合知识架构</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">6 步</div>
+        <div class="label">标准处理流程</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">7 项</div>
+        <div class="label">AI 技能模块</div>
+      </div>
+      <div class="hero-stat">
+        <div class="num">~100</div>
+        <div class="label">语义原子覆盖 1000+ 指标</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<hr class="divider">
+
+<!-- Core Flow -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">核心流程</h2>
+    <p class="section-desc">业务方提出自然语言需求，AI 自动检索知识库、组合计算模式，输出完全符合业务口径的 Trino SQL</p>
+    <div class="core-flow">
+      <div class="flow-node">
+        <div class="icon">💬</div>
+        <div class="name">自然语言需求</div>
+        <div class="desc">"查询昨天的 DAU"</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="icon">🧠</div>
+        <div class="name">AI 理解 + 检索</div>
+        <div class="desc">解析意图 · 匹配知识库</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="icon">📚</div>
+        <div class="name">四层知识组合</div>
+        <div class="desc">指标 · 模式 · 语义 · 字典</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="icon">⚡</div>
+        <div class="name">Trino SQL 输出</div>
+        <div class="desc">准确 · 高效 · 可解释</div>
+      </div>
+    </div>
+
+    <!-- Detailed System Flowchart -->
+    <h3 style="font-size:20px; font-weight:700; margin-top:48px; margin-bottom:6px;">完整系统流程图</h3>
+    <p style="font-size:16px; color:var(--text-dim); margin-bottom:24px;">使用页签切换查看两条路径：<strong style="color:var(--blue);">查询流程</strong>（Skill #1–#6，读取知识库生成 SQL）和 <strong style="color:var(--yellow);">知识录入</strong>（Skill #7，将原始资料写入知识库），共享同一个 knowledge/ 目录</p>
+
+    <div class="sys-flow">
+
+      <!-- ===== Main Flow Column ===== -->
+      <div class="sys-flow-main">
+
+        <!-- Flow Tab Switcher -->
+        <div class="tab-container">
+          <div class="tab-bar" style="margin:0 auto 16px; justify-content:center;">
+            <button class="tab-btn active" onclick="switchTab(this, 'query-flow')" style="padding:10px 28px; font-size:17px;">
+              💬 查询流程 <span style="font-size:13px; opacity:.7;">Skill #1–#6</span>
+            </button>
+            <button class="tab-btn" onclick="switchTab(this, 'ingest-flow')" style="padding:10px 28px; font-size:17px;">
+              📥 知识录入 <span style="font-size:13px; opacity:.7;">Skill #7</span>
+            </button>
+          </div>
+
+          <!-- ========== Tab 1: 查询流程 ========== -->
+          <div id="tab-query-flow" class="tab-panel active">
+
+        <!-- START -->
+        <div class="sf-node sf-start">
+          <div class="sf-node-head">
+            <span style="font-size:22px;">👤</span>
+            <span class="sf-node-title">用户输入</span>
+          </div>
+        </div>
+
+        <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+        <!-- Loop group: Step 1 ↔ Decision 1 -->
+        <div class="sf-loop-group">
+          <div class="sf-loop-return">
+            <div class="loop-line"></div>
+            <div class="loop-arrow"></div>
+            <span class="loop-label">回到 ①</span>
+          </div>
+
+          <!-- Step 1: 需求解析 -->
+          <div class="sf-node" id="sf-step1">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(96,165,250,0.15); color:var(--blue);">🔍</div>
+              <span class="sf-node-title" style="color:var(--blue);">① 需求解析</span>
+              <span class="sf-node-skill">Skill #1</span>
+            </div>
+            <div class="sf-node-body">
+              读取 metrics/ 和 semantics/ 的 aliases，从自然语言中提取指标、维度、时间范围、筛选条件，翻译业务黑话为标准术语，标记不确定项
+            </div>
+            <div class="sf-node-tags">
+              <span>输入：自然语言</span>
+              <span>输出：结构化需求 JSON</span>
+              <span>uncertainties 列表</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Decision 1: 是否有不确定项？ -->
+          <div class="sf-decision">
+            <div class="sf-diamond">是否有不确定项？</div>
+
+            <div class="sf-branches">
+              <!-- YES branch (loops back) -->
+              <div class="sf-branch loopback">
+                <div class="sf-branch-label yes">YES</div>
+                <div class="sf-branch-line"></div>
+                <div class="sf-branch-content">
+                  <div style="font-weight:600; color:var(--orange); margin-bottom:6px;">② 需求澄清 <span style="font-weight:400; font-size:13px; color:var(--text-dim);">Skill #2</span></div>
+                  <div>按优先级分类（高/中/低）<br>选项式提问（最多 3-5 个）<br>给出推荐选项 + 差异说明</div>
+                  <div class="sf-loopback">等待用户回复后重新解析 ←</div>
+                </div>
+              </div>
+
+              <div class="sf-branches-divider"></div>
+
+              <!-- NO branch (continues down) -->
+              <div class="sf-branch">
+                <div class="sf-branch-label no">NO</div>
+                <div class="sf-branch-line"></div>
+                <div class="sf-branch-content" style="background:rgba(74,222,128,0.04);">
+                  <div style="color:var(--green); font-weight:600;">需求明确</div>
+                  <div>直接进入知识检索 ▼</div>
+                </div>
+                <div class="sf-branch-merge"></div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /sf-loop-group -->
+
+        <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+        <!-- ====== Outer loop group: ③ through Decision 4 (long return) ====== -->
+        <div class="sf-loop-group">
+          <div class="sf-loop-return far">
+            <div class="loop-line"></div>
+            <div class="loop-arrow"></div>
+            <span class="loop-label">反馈纠错 → 回到 ③</span>
+          </div>
+
+          <!-- Inner loop group: ③ ↔ Decision 2 -->
+          <div class="sf-loop-group">
+            <div class="sf-loop-return">
+              <div class="loop-line"></div>
+              <div class="loop-arrow"></div>
+              <span class="loop-label">回到 ③</span>
+            </div>
+
+            <!-- Step 3: 知识检索 -->
+            <div class="sf-node" id="sf-step3">
+              <div class="sf-node-head">
+                <div class="sf-node-icon" style="background:rgba(192,132,252,0.15); color:var(--purple);">📖</div>
+                <span class="sf-node-title" style="color:var(--purple);">③ 知识检索</span>
+                <span class="sf-node-skill">Skill #3</span>
+              </div>
+              <div class="sf-node-body">
+                按四层依次展开：<strong>metrics/</strong> 指标配方 → <strong>patterns/</strong> SQL 模板 → <strong>semantics/</strong> 表名+字段+SQL 条件 → <strong>schema/</strong> 字段验证+分区信息
+              </div>
+              <div class="sf-node-tags">
+                <span style="color:var(--blue);">Layer D 指标</span>
+                <span style="color:var(--purple);">Layer C 模式</span>
+                <span style="color:var(--orange);">Layer B 语义</span>
+                <span style="color:var(--green);">Layer A 字典</span>
+              </div>
+            </div>
+
+            <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+            <!-- Decision 2: 知识是否完备？ -->
+            <div class="sf-decision">
+              <div class="sf-diamond">知识是否完备？</div>
+              <div class="sf-branches">
+                <!-- YES branch (continues down) -->
+                <div class="sf-branch">
+                  <div class="sf-branch-label yes">YES</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content" style="background:rgba(74,222,128,0.04);">
+                    <div style="color:var(--green); font-weight:600;">检索完成</div>
+                    <div>所有参数已解析为<br>表名、字段、SQL 条件 ▼</div>
+                  </div>
+                  <div class="sf-branch-merge"></div>
+                </div>
+                <div class="sf-branches-divider"></div>
+                <!-- NO branch (loops back) -->
+                <div class="sf-branch loopback">
+                  <div class="sf-branch-label no">NO</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content">
+                    <div style="font-weight:600; color:var(--red); margin-bottom:6px;">知识缺失</div>
+                    <div>告知用户缺失项<br>记录 knowledge_gaps/</div>
+                    <div class="sf-loopback">用户补充后重新检索 ←</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /inner loop-group ③ -->
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step 4: SQL 生成 -->
+          <div class="sf-node" id="sf-step4">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(108,126,225,0.15); color:var(--accent-light);">⚙️</div>
+              <span class="sf-node-title" style="color:var(--accent-light);">④ SQL 生成</span>
+              <span class="sf-node-skill">Skill #4</span>
+            </div>
+            <div class="sf-node-body">
+              展开 Pattern 模板，代入语义参数：Entity → primary_key、Event → source_table + type_condition、Dimension → sql_expr、NamedValue → sql_condition。优先汇总表，必须带分区条件。
+            </div>
+            <div class="sf-node-tags">
+              <span>ADS &gt; DWS &gt; DWD &gt; ODS</span>
+              <span>CTE 结构化</span>
+              <span>NULLIF 防除零</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Inner loop group: ⑤ ↔ Decision 3 -->
+          <div class="sf-loop-group">
+            <div class="sf-loop-return">
+              <div class="loop-line"></div>
+              <div class="loop-arrow"></div>
+              <span class="loop-label">回到 ⑤</span>
+            </div>
+
+            <!-- Step 5: SQL 验证 -->
+            <div class="sf-node" id="sf-step5">
+              <div class="sf-node-head">
+                <div class="sf-node-icon" style="background:rgba(74,222,128,0.15); color:var(--green);">✅</div>
+                <span class="sf-node-title" style="color:var(--green);">⑤ SQL 验证</span>
+                <span class="sf-node-skill">Skill #5</span>
+              </div>
+              <div class="sf-node-body">
+                五维自检：语法正确性 → 字段存在性（对照 schema/）→ 逻辑合理性（去重/JOIN/时间）→ 口径一致性（对照 metrics/）→ 性能风险（分区/表选择）
+              </div>
+              <div class="sf-node-tags">
+                <span>语法</span>
+                <span>字段</span>
+                <span>逻辑</span>
+                <span>口径</span>
+                <span>性能</span>
+              </div>
+            </div>
+
+            <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+            <!-- Decision 3: 验证通过？ -->
+            <div class="sf-decision">
+              <div class="sf-diamond">验证是否通过？</div>
+              <div class="sf-branches">
+                <!-- PASS branch (continues down) -->
+                <div class="sf-branch">
+                  <div class="sf-branch-label yes">PASS</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content" style="background:rgba(74,222,128,0.04);">
+                    <div style="color:var(--green); font-weight:600;">验证通过</div>
+                    <div>进入结果输出 ▼</div>
+                  </div>
+                  <div class="sf-branch-merge"></div>
+                </div>
+                <div class="sf-branches-divider"></div>
+                <!-- FAIL branch (loops back) -->
+                <div class="sf-branch loopback">
+                  <div class="sf-branch-label no">FAIL</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content">
+                    <div style="font-weight:600; color:var(--red); margin-bottom:6px;">自动修复</div>
+                    <div>按优先级逐项修复<br>性能 &gt; 逻辑 &gt; 格式</div>
+                    <div class="sf-loopback">修复后重新验证 ←</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /inner loop-group ⑤ -->
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step 6: 结果输出 -->
+          <div class="sf-node" id="sf-step6">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(34,211,238,0.15); color:var(--cyan);">📊</div>
+              <span class="sf-node-title" style="color:var(--cyan);">⑥ 结果输出</span>
+              <span class="sf-node-skill">Skill #6</span>
+            </div>
+            <div class="sf-node-body">
+              标准化输出六部分：需求复述 → 格式化 SQL（带注释）→ 技术方案 → 执行说明 → 结果字段含义 → 注意事项
+            </div>
+            <div class="sf-node-tags">
+              <span>需求复述</span>
+              <span>SQL + 注释</span>
+              <span>技术方案</span>
+              <span>字段说明</span>
+              <span>注意事项</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Output -->
+          <div class="sf-node" style="background: linear-gradient(135deg, rgba(34,211,238,0.06), var(--surface)); border-color: rgba(34,211,238,0.3);">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(34,211,238,0.15); color:var(--cyan);">⚡</div>
+              <span class="sf-node-title" style="color:var(--cyan);">输出 SQL + 说明文档</span>
+            </div>
+            <div class="sf-node-body">用户收到完整的 SQL 查询语句、技术方案说明和结果字段含义，在业务系统中执行并查看结果</div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Decision 4: 用户反馈 -->
+          <div class="sf-decision">
+            <div class="sf-diamond">用户确认结果正确？</div>
+            <div class="sf-branches">
+              <!-- 正确 branch (continues down) -->
+              <div class="sf-branch">
+                <div class="sf-branch-label yes">正确</div>
+                <div class="sf-branch-line"></div>
+                <div class="sf-branch-content" style="background:rgba(74,222,128,0.04);">
+                  <div style="color:var(--green); font-weight:600;">查询完成</div>
+                  <div>如发现新模式或新指标<br>建议补充到知识库</div>
+                </div>
+                <div class="sf-branch-merge"></div>
+              </div>
+              <div class="sf-branches-divider"></div>
+              <!-- 有误 branch (loops back) -->
+              <div class="sf-branch loopback">
+                <div class="sf-branch-label no">有误</div>
+                <div class="sf-branch-line"></div>
+                <div class="sf-branch-content">
+                  <div style="font-weight:600; color:var(--red); margin-bottom:6px;">⑦ 反馈纠错</div>
+                  <div style="text-align:left; line-height:1.7;">
+                    <strong style="color:var(--pink);">1. 五点定位</strong><br>
+                    <span style="font-size:13px;">Entity → Event → Dimension → Pattern → Metric<br>逐层排查，精确到具体语义原子</span><br><br>
+                    <strong style="color:var(--pink);">2. 记录反馈</strong><br>
+                    <span style="font-size:13px;">写入 feedback/corrections/<br>记录错误SQL、正确SQL、根因分析</span><br><br>
+                    <strong style="color:var(--pink);">3. 修正知识库</strong><br>
+                    <span style="font-size:13px;">修正 semantics/ 或 patterns/ 中的定义<br>改一处 → 所有相关指标自动修正</span>
+                  </div>
+                  <div class="sf-loopback">知识库修正后重新生成 ←</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /outer loop-group ③→Decision 4 -->
+
+        <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+        <!-- END -->
+        <div class="sf-node sf-end">
+          <div class="sf-node-head">
+            <span style="font-size:22px;">✅</span>
+            <span class="sf-node-title" style="color:var(--green);">流程结束 · 知识库持续进化</span>
+          </div>
+        </div>
+
+        <div class="sf-flow-hint" style="background:rgba(251,191,36,0.05); border:1px dashed rgba(251,191,36,0.25);">
+          <span style="color:var(--yellow);">📥</span> 知识从哪来？切换到 <strong style="color:var(--yellow); cursor:pointer;" onclick="this.closest('.tab-container').querySelector('[onclick*=ingest]').click()">「知识录入」</strong> 页签查看
+        </div>
+
+          </div><!-- /tab-query-flow -->
+
+          <!-- ========== Tab 2: 知识录入流程 ========== -->
+          <div id="tab-ingest-flow" class="tab-panel">
+
+          <div class="sf-flow-desc" style="background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.2);">
+            <div style="font-size:17px; font-weight:700; color:var(--yellow);">Skill #7 · 原始资料 → 结构化 YAML</div>
+            <div style="font-size:14px; color:var(--text-dim); margin-top:4px;">
+              将任意格式的原始资料自动转换并写入 knowledge/ 目录，供查询流程读取使用
+            </div>
+          </div>
+
+          <!-- Knowledge Input START -->
+          <div class="sf-node sf-start" style="border-color:rgba(251,191,36,0.3); background:linear-gradient(135deg, rgba(251,191,36,0.08), var(--surface));">
+            <div class="sf-node-head">
+              <span style="font-size:22px;">📁</span>
+              <span class="sf-node-title" style="color:var(--yellow);">用户将原始资料放入 raw_knowledge/mixed/</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- User Command -->
+          <div class="sf-node" style="border-color:rgba(251,191,36,0.3); background:linear-gradient(135deg, rgba(251,191,36,0.06), var(--surface));">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(251,191,36,0.15); color:var(--yellow);">👤</div>
+              <span class="sf-node-title" style="color:var(--yellow);">用户下达处理指令</span>
+            </div>
+            <div class="sf-node-body">
+              告诉 AI 需要处理哪些文件，例如：<br><code style="font-size:14px; color:var(--yellow);">请处理 raw_knowledge/mixed/ 下的文件</code>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step K1: 智能识别 -->
+          <div class="sf-node">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(96,165,250,0.15); color:var(--blue);">🔎</div>
+              <span class="sf-node-title" style="color:var(--blue);">K1 智能识别</span>
+              <span class="sf-node-skill">Skill #7</span>
+            </div>
+            <div class="sf-node-body">
+              读取文件内容，判断格式（Excel / Word / SQL / PDF / Markdown / 会议记录等），分析内容类型（表结构 / 业务规则 / 指标定义 / 混合内容），判断涉及的知识层级
+            </div>
+            <div class="sf-node-tags">
+              <span>📊 Excel</span>
+              <span>📝 Word</span>
+              <span>💾 SQL</span>
+              <span>📕 PDF</span>
+              <span>📃 Markdown</span>
+              <span>💬 聊天记录</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step K2: 提取 & 补全 -->
+          <div class="sf-node">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(192,132,252,0.15); color:var(--purple);">🧩</div>
+              <span class="sf-node-title" style="color:var(--purple);">K2 提取 &amp; 智能补全</span>
+              <span class="sf-node-skill">Skill #7</span>
+            </div>
+            <div class="sf-node-body">
+              <strong>提取</strong>：从混杂内容中提取术语定义、表字段、SQL 片段、指标口径等关键信息<br>
+              <strong>补全</strong>：SQL 片段→完整 SQL；简写表名→推测全名（如 user_behavior → dwd_user_behavior）；缺失字段类型→按上下文推断<br>
+              <strong>关联</strong>：推理术语与表的映射（如 DAU 来自哪张表）、表间关联（根据同名字段）
+            </div>
+            <div class="sf-node-tags">
+              <span>高置信：直接提取</span>
+              <span>中置信：推理补全</span>
+              <span>低置信：标注待确认</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step K3: 分类 & 映射 -->
+          <div class="sf-node">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(251,146,60,0.15); color:var(--orange);">📂</div>
+              <span class="sf-node-title" style="color:var(--orange);">K3 分类映射到四层</span>
+            </div>
+            <div class="sf-node-body">
+              根据内容类型映射到知识库对应层级；混合内容拆分写入多个层级
+            </div>
+            <div class="sf-node-tags">
+              <span style="color:var(--green);">表结构 → schema/</span>
+              <span style="color:var(--orange);">业务术语 → semantics/</span>
+              <span style="color:var(--purple);">SQL模板 → patterns/</span>
+              <span style="color:var(--blue);">指标口径 → metrics/</span>
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Loop group: K4 ↔ Decision K -->
+          <div class="sf-loop-group">
+            <div class="sf-loop-return">
+              <div class="loop-line"></div>
+              <div class="loop-arrow"></div>
+              <span class="loop-label">回到 K4</span>
+            </div>
+
+            <!-- Step K4: 格式化 & 质检 -->
+            <div class="sf-node">
+              <div class="sf-node-head">
+                <div class="sf-node-icon" style="background:rgba(74,222,128,0.15); color:var(--green);">✅</div>
+                <span class="sf-node-title" style="color:var(--green);">K4 格式化 &amp; 质量检查</span>
+              </div>
+              <div class="sf-node-body">
+                使用各层 TEMPLATE.yaml 标准化格式，验证字段名与 schema 一致性、SQL 条件可执行性、aliases 无歧义、引用的实体和维度存在
+              </div>
+            </div>
+
+            <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+            <!-- Decision K: 质检通过？ -->
+            <div class="sf-decision">
+              <div class="sf-diamond">质量检查通过？</div>
+              <div class="sf-branches">
+                <!-- PASS branch (continues down) -->
+                <div class="sf-branch">
+                  <div class="sf-branch-label yes">PASS</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content" style="background:rgba(74,222,128,0.04);">
+                    <div style="color:var(--green); font-weight:600;">写入知识库</div>
+                    <div>生成 YAML 文件写入<br>knowledge/ 对应目录 ▼</div>
+                  </div>
+                  <div class="sf-branch-merge"></div>
+                </div>
+                <div class="sf-branches-divider"></div>
+                <!-- 有疑问 branch (loops back) -->
+                <div class="sf-branch loopback">
+                  <div class="sf-branch-label no">有疑问</div>
+                  <div class="sf-branch-line"></div>
+                  <div class="sf-branch-content">
+                    <div style="font-weight:600; color:var(--red); margin-bottom:4px;">主动提问</div>
+                    <div>标记不确定项<br>向用户确认后修正</div>
+                    <div class="sf-loopback">确认后重新质检 ←</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div><!-- /loop-group K4 -->
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Step K5: 归档 & 报告 -->
+          <div class="sf-node">
+            <div class="sf-node-head">
+              <div class="sf-node-icon" style="background:rgba(244,114,182,0.15); color:var(--pink);">📋</div>
+              <span class="sf-node-title" style="color:var(--pink);">K5 归档 &amp; 输出报告</span>
+            </div>
+            <div class="sf-node-body">
+              原始文件移至 raw_knowledge/processed/，输出处理报告（生成文件列表、质量评分、不确定项说明）
+            </div>
+          </div>
+
+          <div class="sf-connector"><div class="sf-conn-line"></div><div class="sf-conn-arrow">▼</div></div>
+
+          <!-- Knowledge END -->
+          <div class="sf-node sf-end" style="border-color:rgba(251,191,36,0.3); background:linear-gradient(135deg, rgba(251,191,36,0.06), var(--surface));">
+            <div class="sf-node-head">
+              <span style="font-size:22px;">📚</span>
+              <span class="sf-node-title" style="color:var(--yellow);">知识库已更新 · 查询能力扩展</span>
+            </div>
+          </div>
+
+          <div class="sf-flow-hint" style="background:rgba(96,165,250,0.05); border:1px dashed rgba(96,165,250,0.25);">
+            <span style="color:var(--blue);">💬</span> 写入的知识如何使用？切换到 <strong style="color:var(--blue); cursor:pointer;" onclick="this.closest('.tab-container').querySelector('[onclick*=query]').click()">「查询流程」</strong> 页签查看
+          </div>
+
+          </div><!-- /tab-ingest-flow -->
+        </div><!-- /tab-container -->
+
+      </div><!-- /sys-flow-main -->
+
+    </div><!-- /sys-flow -->
+
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Composable Architecture -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">四层可组合知识架构</h2>
+    <p class="section-desc">核心设计理念：维护少量语义原子和计算模式，通过组合覆盖无限的指标空间。每层职责单一、互相解耦，信息不跨层重复。</p>
+
+    <div class="formula-box">
+      <div class="formula">
+        <span class="part p-pattern">~10 个计算模式</span>
+        <span class="op">&times;</span>
+        <span class="part p-semantic">~100 个语义原子</span>
+        <span class="op">=</span>
+        <span class="part p-result">覆盖 90%+ 业务指标</span>
+      </div>
+      <div class="formula-note">组合而非枚举 — 知识库的价值在于「组合能力」，不在于「预存答案数量」</div>
+    </div>
+
+    <div class="arch-grid">
+      <!-- Layer D: Metrics -->
+      <div class="arch-layer layer-d">
+        <div class="layer-label">
+          <span class="tag">Layer D</span>
+          <span class="layer-name">指标目录</span>
+          <span class="layer-role">Metrics</span>
+        </div>
+        <div class="layer-content">
+          <p><strong>「是哪个组合有名字」</strong> — 极薄的声明式配置，只写「用哪个模式 + 填哪些原子」，不写定义不写 SQL。仅登记口径需固化的高频指标，大多数查询由 AI 即时组合。</p>
+          <div class="layer-items">
+            <span class="layer-item">dau.yaml</span>
+            <span class="layer-item">mau.yaml</span>
+            <span class="layer-item">new_user_count.yaml</span>
+            <span class="layer-item">d1_retention_rate.yaml</span>
+            <span class="layer-item">d7_retention_rate.yaml</span>
+            <span class="layer-item">post_user_count.yaml</span>
+            <span class="layer-item">trichotomy_aum.yaml</span>
+            <span class="layer-item">fund_first_purchase_users.yaml</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer C: Patterns -->
+      <div class="arch-layer layer-c">
+        <div class="layer-label">
+          <span class="tag">Layer C</span>
+          <span class="layer-name">计算模式</span>
+          <span class="layer-role">Patterns</span>
+        </div>
+        <div class="layer-content">
+          <p><strong>「怎么算」</strong> — 可复用的参数化 SQL 模板，定义通用的计算结构。业务无关，只关心计算方式。参数类型引用语义层，形成层间接口契约。</p>
+          <div class="layer-items">
+            <span class="layer-item">count_distinct 去重计数</span>
+            <span class="layer-item">cohort_retention 队列留存</span>
+            <span class="layer-item">sum_metric 求和指标</span>
+            <span class="layer-item">比值类（分子分母组合）</span>
+            <span class="layer-item">漏斗转化 funnel</span>
+            <span class="layer-item">同比环比 period_over_period</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer B: Semantics -->
+      <div class="arch-layer layer-b">
+        <div class="layer-label">
+          <span class="tag">Layer B</span>
+          <span class="layer-name">业务语义</span>
+          <span class="layer-role">Semantics</span>
+        </div>
+        <div class="layer-content">
+          <p><strong>「是什么意思」</strong> — 把业务语言翻译成数据条件，是系统的单一权威来源。三类语义原子以实体为锚点组织，真正需要投入精力维护的核心层。</p>
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 8px;">
+            <div>
+              <div style="font-size:15px; font-weight:600; color:var(--orange); margin-bottom:6px;">实体 Entities</div>
+              <div class="layer-items"><span class="layer-item">user 用户</span><span class="layer-item">fund_product 基金</span></div>
+            </div>
+            <div>
+              <div style="font-size:15px; font-weight:600; color:var(--orange); margin-bottom:6px;">业务过程 Events</div>
+              <div class="layer-items"><span class="layer-item">注册</span><span class="layer-item">活跃行为</span><span class="layer-item">发帖</span><span class="layer-item">评论</span><span class="layer-item">基金购买</span><span class="layer-item">基金首购</span></div>
+            </div>
+            <div>
+              <div style="font-size:15px; font-weight:600; color:var(--orange); margin-bottom:6px;">维度 Dimensions</div>
+              <div class="layer-items"><span class="layer-item">注册渠道</span><span class="layer-item">平台</span><span class="layer-item">行为类型</span><span class="layer-item">计算标签</span><span class="layer-item">持仓量</span><span class="layer-item">基金类型</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Layer A: Schema -->
+      <div class="arch-layer layer-a">
+        <div class="layer-label">
+          <span class="tag">Layer A</span>
+          <span class="layer-name">数据字典</span>
+          <span class="layer-role">Schema</span>
+        </div>
+        <div class="layer-content">
+          <p><strong>「有什么」</strong> — 描述数据仓库的物理事实：表名、字段名、类型、分区键、更新频率。纯客观事实，不含业务判断，理论上可从 Metastore 自动生成。</p>
+          <div class="layer-items">
+            <span class="layer-item">dws_user_daily</span>
+            <span class="layer-item">dwd_user_behavior</span>
+            <span class="layer-item">dwd_user_register</span>
+            <span class="layer-item">dwd_ast_pub_daily_holding_detail</span>
+            <span class="layer-item">dws_evt_parent_money_first_trade</span>
+            <span class="layer-item">+20 tables</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Knowledge Retrieval Path -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">知识检索路径</h2>
+    <p class="section-desc">AI 生成 SQL 时按四层依次展开，每层解决一个维度的问题，最终汇聚成完整的 SQL 语句</p>
+    <div class="retrieval-path">
+      <div class="retrieval-step step-blue">
+        <div class="step-num">1</div>
+        <div class="step-title">指标目录</div>
+        <div class="step-desc">找到指标，获取所用 Pattern 和参数</div>
+        <div class="step-path">metrics/*.yaml</div>
+      </div>
+      <div class="r-arrow">→</div>
+      <div class="retrieval-step step-purple">
+        <div class="step-num">2</div>
+        <div class="step-title">计算模式</div>
+        <div class="step-desc">展开 SQL 模板，理解计算结构</div>
+        <div class="step-path">patterns/*.yaml</div>
+      </div>
+      <div class="r-arrow">→</div>
+      <div class="retrieval-step step-orange">
+        <div class="step-num">3</div>
+        <div class="step-title">业务语义</div>
+        <div class="step-desc">将参数解析为表名、字段、SQL 条件</div>
+        <div class="step-path">semantics/**/*.yaml</div>
+      </div>
+      <div class="r-arrow">→</div>
+      <div class="retrieval-step step-green">
+        <div class="step-num">4</div>
+        <div class="step-title">数据字典</div>
+        <div class="step-desc">确认字段存在，获取分区信息</div>
+        <div class="step-path">schema/tables/*.yaml</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Workflow -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">六步标准工作流程</h2>
+    <p class="section-desc">每个数据需求都按照标准化流程处理，步骤间有明确的数据流转，确保输出质量一致、可追溯</p>
+
+    <div class="pipeline">
+      <!-- Step 1 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(96,165,250,0.15); color:var(--blue);">🔍</div>
+          <div class="pipe-line"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--blue);">① 需求解析 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #1</span></div>
+          <div class="pipe-desc">从自然语言中提取结构化信息：指标名称、维度（group_by）、时间范围、筛选条件。读取 <code>metrics/</code> 和 <code>semantics/</code> 的 aliases 字段匹配业务黑话，翻译为标准术语。标记不确定项。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：自然语言需求</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：结构化需求 {metrics, dimensions, time_range, filters, uncertainties}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 2 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(251,146,60,0.15); color:var(--orange);">❓</div>
+          <div class="pipe-line"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--orange);">② 需求澄清 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #2 · 仅当有 uncertainties 时触发</span></div>
+          <div class="pipe-desc">按优先级处理不确定项：高（影响 SQL 核心逻辑） > 中（影响结果展示） > 低（可用默认值）。以选项方式提问（而非开放式），给出推荐选项和差异说明。一次最多 3-5 个问题，避免过度提问。支持渐进式澄清、假设验证、示例辅助三种策略。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：uncertainties 列表</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：澄清后的确定性需求</span>
+            <span class="pipe-tag" style="color:var(--orange); border-color:var(--orange-dim);">可能循环：用户回复后更新需求</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 3 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(192,132,252,0.15); color:var(--purple);">📖</div>
+          <div class="pipe-line"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--purple);">③ 知识检索 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #3</span></div>
+          <div class="pipe-desc">按四层依次展开：<strong>metrics/</strong> 找到指标配方 → <strong>patterns/</strong> 获取 SQL 模板和参数定义 → <strong>semantics/</strong> 将 Entity/Event/Dimension/NamedValue 展开为表名、字段名、SQL 条件 → <strong>schema/</strong> 确认字段存在、获取分区信息。知识缺失时主动告知用户。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：确定性需求</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：retrieval_result {pattern, semantic_resolution, schema_validation}</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 4 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(108,126,225,0.15); color:var(--accent-light);">⚙️</div>
+          <div class="pipe-line"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--accent-light);">④ SQL 生成 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #4</span></div>
+          <div class="pipe-desc">展开 Pattern 模板，代入语义参数：Entity → primary_key、Event → source_table + type_condition、Dimension → sql_expr（SELECT/GROUP BY）、NamedValue → sql_condition（WHERE 子查询）。优先使用汇总表（ADS > DWS > DWD > ODS），必须包含分区条件，使用 CTE 提高可读性，使用 NULLIF 防除零。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：retrieval_result</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：Trino SQL 语句</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 5 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(74,222,128,0.15); color:var(--green);">✅</div>
+          <div class="pipe-line"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--green);">⑤ SQL 验证 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #5</span></div>
+          <div class="pipe-desc">六维自检：<strong>语法</strong>（关键字/括号/逗号）→ <strong>字段存在性</strong>（对照 schema/ 逐一验证）→ <strong>逻辑</strong>（去重/JOIN类型/时间计算）→ <strong>口径一致性</strong>（对照 metrics/ 定义）→ <strong>性能</strong>（分区条件/表选择/时间范围）。发现问题时自动修复后重新验证。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：SQL + 需求 + 业务定义</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：验证通过的 SQL</span>
+            <span class="pipe-tag" style="color:var(--red); border-color:rgba(248,113,113,0.3);">不通过则回退修复</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 6 -->
+      <div class="pipe-step">
+        <div class="pipe-left">
+          <div class="pipe-icon-wrap" style="background:rgba(34,211,238,0.15); color:var(--cyan);">📊</div>
+          <div class="pipe-line" style="background:transparent;"></div>
+        </div>
+        <div class="pipe-right">
+          <div class="pipe-title" style="color:var(--cyan);">⑥ 结果输出 <span style="font-weight:400; font-size:14px; color:var(--text-dim);">Skill #6</span></div>
+          <div class="pipe-desc">标准化输出六个部分：<strong>需求复述</strong>（确认理解）→ <strong>格式化 SQL</strong>（带注释）→ <strong>技术方案</strong>（使用的表/计算逻辑/关键技术点）→ <strong>执行说明</strong>（数据范围/预计耗时）→ <strong>结果字段说明</strong>（含义/示例值/单位）→ <strong>注意事项</strong>（性能/数据质量风险）。</div>
+          <div class="pipe-tags">
+            <span class="pipe-tag">输入：验证通过的 SQL + 需求信息</span>
+            <span class="pipe-tag" style="color:var(--green); border-color:var(--green-dim);">输出：完整的 SQL + 说明文档</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Skills Module Overview -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">AI 技能模块</h2>
+    <p class="section-desc">7 个标准化技能文档定义了 AI 在每个环节的行为规范、触发条件和输入输出。Skill #1-#6 对应查询主流程，Skill #7 负责知识库自动扩充。</p>
+
+    <div class="skills-overview">
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--blue);">01</div>
+          <div class="skill-ov-title">需求解析</div>
+        </div>
+        <div class="skill-ov-trigger">触发：用户提交数据需求时</div>
+        <p>从自然语言提取指标、维度、时间范围、筛选条件，匹配 aliases 翻译业务黑话，标记不确定项</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：自然语言</span>
+          <span style="color:var(--green);">输出：结构化需求 JSON</span>
+        </div>
+      </div>
+
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--orange);">02</div>
+          <div class="skill-ov-title">需求澄清</div>
+        </div>
+        <div class="skill-ov-trigger">触发：存在 uncertainties 时</div>
+        <p>按优先级（高/中/低）提问，选项式而非开放式，给出推荐选项和差异说明，最多 3-5 个问题</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：不确定项列表</span>
+          <span style="color:var(--green);">输出：确定性需求</span>
+        </div>
+      </div>
+
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--purple);">03</div>
+          <div class="skill-ov-title">知识检索</div>
+        </div>
+        <div class="skill-ov-trigger">触发：需求澄清完成后</div>
+        <p>按四层依次展开 metrics → patterns → semantics → schema，将语义 ID 解析为表名、字段名和 SQL 条件</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：确定性需求</span>
+          <span style="color:var(--green);">输出：retrieval_result</span>
+        </div>
+      </div>
+
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--accent);">04</div>
+          <div class="skill-ov-title">SQL 生成</div>
+        </div>
+        <div class="skill-ov-trigger">触发：知识检索完成后</div>
+        <p>展开 Pattern 模板，代入语义参数（Entity/Event/Dimension/NamedValue），优先汇总表，必须带分区条件</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：retrieval_result</span>
+          <span style="color:var(--green);">输出：Trino SQL</span>
+        </div>
+      </div>
+
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--green);">05</div>
+          <div class="skill-ov-title">SQL 验证</div>
+        </div>
+        <div class="skill-ov-trigger">触发：SQL 生成后、输出前</div>
+        <p>五维自检：语法正确性 → 字段存在性 → 逻辑合理性 → 口径一致性 → 性能风险。不通过则自动修复后重新验证</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：SQL + 业务定义</span>
+          <span style="color:var(--green);">输出：验证通过的 SQL</span>
+        </div>
+      </div>
+
+      <div class="skill-ov">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--cyan);">06</div>
+          <div class="skill-ov-title">结果输出</div>
+        </div>
+        <div class="skill-ov-trigger">触发：SQL 验证通过后</div>
+        <p>标准化输出：需求复述 → 格式化 SQL → 技术方案 → 执行说明 → 结果字段含义 → 注意事项</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：验证通过的 SQL</span>
+          <span style="color:var(--green);">输出：完整文档</span>
+        </div>
+      </div>
+
+      <div class="skill-ov skill-highlight">
+        <div class="skill-ov-head">
+          <div class="skill-ov-num" style="background:var(--yellow); color:#000;">07</div>
+          <div class="skill-ov-title" style="color:var(--yellow);">原始知识处理 <span style="font-size:13px; font-weight:400; color:var(--text-dim); margin-left:8px;">独立于查询主流程，负责知识库的自动扩充</span></div>
+        </div>
+        <div class="skill-ov-trigger">触发：用户将原始资料放到 raw_knowledge/mixed/ 并请求处理</div>
+        <p>接受任意格式（Excel / Word / SQL / PDF / Markdown / 会议记录等），AI 自动识别内容类型、提取关键信息、智能补全、按新架构四层分类写入知识库，最后归档原始文件。完全不依赖用户标注，混杂内容也能处理。处理后输出详细报告，不确定的地方主动提问。</p>
+        <div class="skill-ov-io">
+          <span style="color:var(--blue);">输入：raw_knowledge/mixed/ 中的任意文件</span>
+          <span style="color:var(--green);">输出：知识库更新 + 处理报告 + 原始文件归档</span>
+          <span style="color:var(--orange);">详见下方「知识库扩充流程」</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Example -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">端到端示例</h2>
+    <p class="section-desc">以「查询昨天的 DAU」为例，展示从自然语言到 SQL 的完整推导路径</p>
+
+    <div class="tab-container">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(this, 'simple')">简单查询</button>
+      <button class="tab-btn" onclick="switchTab(this, 'complex')">复杂查询</button>
+    </div>
+
+    <div id="tab-simple" class="tab-panel active">
+      <div class="example-box">
+        <div class="example-header">💬 用户："查询昨天的 DAU"</div>
+        <div class="example-body">
+          <div class="example-timeline">
+            <div class="tl-item done">
+              <div class="tl-label">Step 1 · 需求解析</div>
+              <div class="tl-content">识别指标: DAU（日活跃用户数），时间: 昨天，无分组维度</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 2 · 指标目录</div>
+              <div class="tl-content">匹配 <code>metrics/dau.yaml</code> → pattern: <code>count_distinct</code>，entity: user，event: active_behavior</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 3 · 计算模式</div>
+              <div class="tl-content">展开 <code>patterns/count_distinct.yaml</code> → <code>COUNT(DISTINCT ${entity.primary_key}) FROM ${event.source_table}</code></div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 4 · 业务语义</div>
+              <div class="tl-content">Entity(user) → primary_key: <code>user_id</code>；Event(active_behavior) → source_table: <code>dwd_user_behavior</code>；可优化：改用汇总表 <code>dws_user_daily</code></div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 5 · 数据字典</div>
+              <div class="tl-content">确认 <code>dws_user_daily</code> 分区字段: <code>date</code>，字段 <code>user_id</code> / <code>is_active</code> 存在 ✅</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 6 · 生成 SQL</div>
+              <div class="tl-content">
+                <div class="sql-block"><span class="sql-comment">-- DAU：昨天的日活跃用户数（使用汇总表）</span>
+<span class="sql-keyword">SELECT</span>
+    <span class="sql-field">date</span>,
+    <span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> <span class="sql-field">user_id</span>) <span class="sql-keyword">AS</span> <span class="sql-field">dau</span>
+<span class="sql-keyword">FROM</span> <span class="sql-field">dws_user_daily</span>
+<span class="sql-keyword">WHERE</span> <span class="sql-field">date</span> = <span class="sql-func">date_add</span>(<span class="sql-string">'day'</span>, <span class="sql-number">-1</span>, <span class="sql-func">current_date</span>)
+  <span class="sql-keyword">AND</span> <span class="sql-field">is_active</span> = <span class="sql-number">1</span>
+<span class="sql-keyword">GROUP BY</span> <span class="sql-field">date</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-complex" class="tab-panel">
+      <div class="example-box">
+        <div class="example-header">💬 用户："1 月份新用户的次日留存率，按渠道分"</div>
+        <div class="example-body">
+          <div class="example-timeline">
+            <div class="tl-item done">
+              <div class="tl-label">Step 1 · 需求解析</div>
+              <div class="tl-content">指标: 次日留存率，时间: 1 月份，筛选: 新用户，维度: 渠道</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 2 · 指标目录</div>
+              <div class="tl-content">匹配 <code>metrics/d1_retention_rate.yaml</code> → pattern: <code>cohort_retention</code>，base: registration，retain: active_behavior，offset_days: 1</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 3 · 计算模式</div>
+              <div class="tl-content">展开 <code>patterns/cohort_retention.yaml</code> → CTE 结构：base 队列 → retained 留存 → LEFT JOIN 计算比率</div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 4 · 业务语义</div>
+              <div class="tl-content">
+                Event(registration) → <code>dwd_user_register</code>；
+                Event(active_behavior) → <code>dwd_user_behavior</code>；
+                Dimension(register_channel) → <code>register_channel</code> from dwd_user_register
+              </div>
+            </div>
+            <div class="tl-item done">
+              <div class="tl-label">Step 5 · 生成 SQL</div>
+              <div class="tl-content">
+                <div class="sql-block"><span class="sql-comment">-- 1 月新用户次日留存率，按注册渠道分组</span>
+<span class="sql-keyword">WITH</span> <span class="sql-field">cohort</span> <span class="sql-keyword">AS</span> (
+    <span class="sql-keyword">SELECT</span> <span class="sql-field">user_id</span>, <span class="sql-field">register_date</span>, <span class="sql-field">register_channel</span>
+    <span class="sql-keyword">FROM</span> <span class="sql-field">dwd_user_register</span>
+    <span class="sql-keyword">WHERE</span> <span class="sql-field">register_date</span> >= <span class="sql-keyword">DATE</span> <span class="sql-string">'2024-01-01'</span>
+      <span class="sql-keyword">AND</span> <span class="sql-field">register_date</span> &lt; <span class="sql-keyword">DATE</span> <span class="sql-string">'2024-02-01'</span>
+),
+<span class="sql-field">retained</span> <span class="sql-keyword">AS</span> (
+    <span class="sql-keyword">SELECT DISTINCT</span> <span class="sql-field">b.user_id</span>
+    <span class="sql-keyword">FROM</span> <span class="sql-field">dwd_user_behavior</span> b
+    <span class="sql-keyword">JOIN</span> <span class="sql-field">cohort</span> c <span class="sql-keyword">ON</span> b.user_id = c.user_id
+    <span class="sql-keyword">WHERE</span> b.date = <span class="sql-func">date_add</span>(<span class="sql-string">'day'</span>, <span class="sql-number">1</span>, c.register_date)
+)
+<span class="sql-keyword">SELECT</span>
+    c.<span class="sql-field">register_channel</span>,
+    <span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> c.user_id) <span class="sql-keyword">AS</span> cohort_size,
+    <span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> r.user_id) <span class="sql-keyword">AS</span> retained_count,
+    <span class="sql-func">ROUND</span>(<span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> r.user_id) * <span class="sql-number">100.0</span>
+      / <span class="sql-func">NULLIF</span>(<span class="sql-func">COUNT</span>(<span class="sql-keyword">DISTINCT</span> c.user_id), <span class="sql-number">0</span>), <span class="sql-number">2</span>) <span class="sql-keyword">AS</span> retention_rate
+<span class="sql-keyword">FROM</span> <span class="sql-field">cohort</span> c
+<span class="sql-keyword">LEFT JOIN</span> <span class="sql-field">retained</span> r <span class="sql-keyword">ON</span> c.user_id = r.user_id
+<span class="sql-keyword">GROUP BY</span> c.<span class="sql-field">register_channel</span>
+<span class="sql-keyword">ORDER BY</span> c.<span class="sql-field">register_channel</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div><!-- /tab-container -->
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Directory Structure -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">项目目录结构</h2>
+    <p class="section-desc">知识库、技能模块、设计文档、反馈机制各有分工</p>
+
+    <!-- Root files -->
+    <div class="dir-container">
+
+      <div class="dir-group">
+        <div class="dir-group-header">
+          <div class="dir-group-icon" style="background:rgba(108,126,225,0.15); color:var(--accent-light);">📁</div>
+          <div class="dir-group-info">
+            <div class="dir-group-name">/  <span style="font-weight:400; font-size:15px; color:var(--text-dim); font-family:inherit;">项目根目录</span></div>
+          </div>
+        </div>
+        <div class="dir-root-files">
+          <div class="dir-root-chip"><span class="chip-icon">⚙️</span><span class="chip-file">.cursorrules</span><span class="chip-desc">— AI 行为规则</span></div>
+          <div class="dir-root-chip"><span class="chip-icon">📖</span><span class="chip-file">README.md</span><span class="chip-desc">— 项目说明</span></div>
+          <div class="dir-root-chip"><span class="chip-icon">🚀</span><span class="chip-file">GETTING_STARTED.md</span><span class="chip-desc">— 使用指南</span></div>
+        </div>
+      </div>
+
+      <!-- knowledge/ -->
+      <div class="dir-group" style="border-color: rgba(251,191,36,0.3);">
+        <div class="dir-group-header" style="background: linear-gradient(135deg, rgba(251,191,36,0.08), transparent);">
+          <div class="dir-group-icon" style="background:rgba(251,191,36,0.15); color:var(--yellow);">📚</div>
+          <div class="dir-group-info">
+            <div class="dir-group-name">knowledge/ <span class="dir-group-badge" style="background:var(--yellow); color:#000;">核心</span></div>
+            <div class="dir-group-desc">结构化知识库 — AI 推理的全部依据，四层可组合架构</div>
+          </div>
+        </div>
+        <div class="dir-group-body">
+
+          <!-- schema/ -->
+          <div class="dir-entry">
+            <div class="dir-entry-icon"><span class="dir-layer-dot" style="background:var(--green);"></span></div>
+            <div class="dir-entry-name is-dir" style="color:var(--green);">schema/</div>
+            <div class="dir-entry-desc">Layer A · 数据字典</div>
+          </div>
+          <div class="dir-sub-group" style="border-color: rgba(74,222,128,0.2);">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📂</div>
+              <div class="dir-entry-name is-dir">tables/</div>
+              <div class="dir-entry-desc">25+ 张表的 YAML 定义</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">trino_syntax.md</div>
+              <div class="dir-entry-desc">Trino 语法速查</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">TEMPLATE.yaml</div>
+              <div class="dir-entry-desc">新建表的模板</div>
+            </div>
+          </div>
+
+          <!-- semantics/ -->
+          <div class="dir-entry" style="margin-top:4px;">
+            <div class="dir-entry-icon"><span class="dir-layer-dot" style="background:var(--orange);"></span></div>
+            <div class="dir-entry-name is-dir" style="color:var(--orange);">semantics/</div>
+            <div class="dir-entry-desc">Layer B · 业务语义</div>
+          </div>
+          <div class="dir-sub-group" style="border-color: rgba(251,146,60,0.2);">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">👤</div>
+              <div class="dir-entry-name is-dir">entities/</div>
+              <div class="dir-entry-desc">实体定义 (user, fund_product...)</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">⚡</div>
+              <div class="dir-entry-name is-dir">events/</div>
+              <div class="dir-entry-desc">业务过程 (注册, 活跃, 发帖...)</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📊</div>
+              <div class="dir-entry-name is-dir">dimensions/</div>
+              <div class="dir-entry-desc">维度 (渠道, 平台, 行为类型...)</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📋</div>
+              <div class="dir-entry-name is-dir">templates/</div>
+              <div class="dir-entry-desc">各类语义文件的创建模板</div>
+            </div>
+          </div>
+
+          <!-- patterns/ -->
+          <div class="dir-entry" style="margin-top:4px;">
+            <div class="dir-entry-icon"><span class="dir-layer-dot" style="background:var(--purple);"></span></div>
+            <div class="dir-entry-name is-dir" style="color:var(--purple);">patterns/</div>
+            <div class="dir-entry-desc">Layer C · 计算模式</div>
+          </div>
+          <div class="dir-sub-group" style="border-color: rgba(192,132,252,0.2);">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">count_distinct.yaml</div>
+              <div class="dir-entry-desc">去重计数</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">cohort_retention.yaml</div>
+              <div class="dir-entry-desc">队列留存</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">sum_metric.yaml</div>
+              <div class="dir-entry-desc">求和指标</div>
+            </div>
+          </div>
+
+          <!-- metrics/ -->
+          <div class="dir-entry" style="margin-top:4px;">
+            <div class="dir-entry-icon"><span class="dir-layer-dot" style="background:var(--blue);"></span></div>
+            <div class="dir-entry-name is-dir" style="color:var(--blue);">metrics/</div>
+            <div class="dir-entry-desc">Layer D · 指标目录</div>
+          </div>
+          <div class="dir-sub-group" style="border-color: rgba(96,165,250,0.2);">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">dau.yaml</div>
+              <div class="dir-entry-desc">日活跃用户数</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">mau.yaml</div>
+              <div class="dir-entry-desc">月活跃用户数</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">d1_retention_rate.yaml</div>
+              <div class="dir-entry-desc">次日留存率</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file">new_user_count.yaml</div>
+              <div class="dir-entry-desc">新增用户数</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon" style="color:var(--text-dim);">···</div>
+              <div class="dir-entry-name is-file" style="color:var(--text-dim);">+ 4 more</div>
+              <div class="dir-entry-desc"></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- skills/ -->
+      <div class="dir-group">
+        <div class="dir-group-header">
+          <div class="dir-group-icon" style="background:rgba(192,132,252,0.15); color:var(--purple);">🧩</div>
+          <div class="dir-group-info">
+            <div class="dir-group-name">skills/</div>
+            <div class="dir-group-desc">AI 技能定义 — 7 个标准化技能模块，定义处理流程中每一步的行为规范</div>
+          </div>
+        </div>
+        <div class="dir-group-body">
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">01</div>
+            <div class="dir-entry-name is-file">requirement_parsing.md</div>
+            <div class="dir-entry-desc">需求解析</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">02</div>
+            <div class="dir-entry-name is-file">requirement_clarification.md</div>
+            <div class="dir-entry-desc">需求澄清</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">03</div>
+            <div class="dir-entry-name is-file">knowledge_retrieval.md</div>
+            <div class="dir-entry-desc">知识检索</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">04</div>
+            <div class="dir-entry-name is-file">sql_generation.md</div>
+            <div class="dir-entry-desc">SQL 生成</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">05</div>
+            <div class="dir-entry-name is-file">sql_validation.md</div>
+            <div class="dir-entry-desc">SQL 验证</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">06</div>
+            <div class="dir-entry-name is-file">result_explanation.md</div>
+            <div class="dir-entry-desc">结果输出</div>
+          </div>
+          <div class="dir-entry">
+            <div class="dir-entry-icon" style="color:var(--accent-light); font-size:14px; font-weight:700;">07</div>
+            <div class="dir-entry-name is-file">raw_knowledge_processing.md</div>
+            <div class="dir-entry-desc">原始知识处理</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- raw_knowledge/ + design_philosophy/ + feedback/ -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+
+        <div class="dir-group">
+          <div class="dir-group-header" style="padding:12px 16px;">
+            <div class="dir-group-icon" style="background:rgba(96,165,250,0.15); color:var(--blue); width:32px; height:32px; font-size:17px;">📥</div>
+            <div class="dir-group-info">
+              <div class="dir-group-name" style="font-size:16px;">raw_knowledge/</div>
+              <div class="dir-group-desc">原始知识资料入口</div>
+            </div>
+          </div>
+          <div class="dir-group-body">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📂</div>
+              <div class="dir-entry-name is-dir" style="font-size:14px;">mixed/</div>
+              <div class="dir-entry-desc">放入文档</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📂</div>
+              <div class="dir-entry-name is-dir" style="font-size:14px;">processed/</div>
+              <div class="dir-entry-desc">已归档</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dir-group">
+          <div class="dir-group-header" style="padding:12px 16px;">
+            <div class="dir-group-icon" style="background:rgba(251,146,60,0.15); color:var(--orange); width:32px; height:32px; font-size:17px;">💡</div>
+            <div class="dir-group-info">
+              <div class="dir-group-name" style="font-size:16px;">design_philosophy/</div>
+              <div class="dir-group-desc">设计哲学文档</div>
+            </div>
+          </div>
+          <div class="dir-group-body">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file" style="font-size:13px;">02_composable_*.md</div>
+              <div class="dir-entry-desc">架构设计</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📄</div>
+              <div class="dir-entry-name is-file" style="font-size:13px;">03_cursorrules_*.md</div>
+              <div class="dir-entry-desc">规则设计</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dir-group">
+          <div class="dir-group-header" style="padding:12px 16px;">
+            <div class="dir-group-icon" style="background:rgba(74,222,128,0.15); color:var(--green); width:32px; height:32px; font-size:15px;">💬</div>
+            <div class="dir-group-info">
+              <div class="dir-group-name" style="font-size:16px;">feedback/</div>
+              <div class="dir-group-desc">反馈收集</div>
+            </div>
+          </div>
+          <div class="dir-group-body">
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📂</div>
+              <div class="dir-entry-name is-dir" style="font-size:14px;">corrections/</div>
+              <div class="dir-entry-desc">纠错</div>
+            </div>
+            <div class="dir-entry">
+              <div class="dir-entry-icon">📂</div>
+              <div class="dir-entry-name is-dir" style="font-size:14px;">knowledge_gaps/</div>
+              <div class="dir-entry-desc">知识缺口</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Rules -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">AI 行为规范</h2>
+    <p class="section-desc">通过 .cursorrules 定义 AI 的角色边界、行为准则和安全规范</p>
+    <div class="rules-grid">
+      <div class="rule-card">
+        <h4>🎯 核心原则</h4>
+        <ul class="rule-list">
+          <li><span class="check">✓</span> 准确性第一 — SQL 必须完全符合业务口径</li>
+          <li><span class="check">✓</span> 主动澄清 — 遇到模糊需求必须提问</li>
+          <li><span class="check">✓</span> 知识驱动 — 严格基于知识库生成 SQL</li>
+          <li><span class="check">✓</span> 可解释性 — 清晰说明 SQL 逻辑</li>
+          <li><span class="check">✓</span> Trino 语法 — 所有 SQL 必须符合 Trino</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>📝 SQL 生成规范</h4>
+        <ul class="rule-list">
+          <li><span class="check">✓</span> 优先使用汇总表（ADS > DWS > DWD > ODS）</li>
+          <li><span class="check">✓</span> 必须包含分区字段条件</li>
+          <li><span class="check">✓</span> 使用 CTE 提高复杂 SQL 可读性</li>
+          <li><span class="check">✓</span> 除法必须用 NULLIF 防除零</li>
+          <li><span class="cross">✗</span> 禁止 SELECT *，禁止全表扫描</li>
+          <li><span class="cross">✗</span> 禁止非 Trino 语法</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>📚 知识库规范</h4>
+        <ul class="rule-list">
+          <li><span class="check">✓</span> 必须先读取知识库文档再生成 SQL</li>
+          <li><span class="check">✓</span> 指标定义严格遵循 metrics/</li>
+          <li><span class="check">✓</span> 业务语义参考 semantics/</li>
+          <li><span class="cross">✗</span> 不能使用知识库外的表或字段</li>
+          <li><span class="cross">✗</span> 不能自行定义指标计算规则</li>
+        </ul>
+      </div>
+      <div class="rule-card">
+        <h4>🔒 安全规范</h4>
+        <ul class="rule-list">
+          <li><span class="cross">✗</span> 不能生成 UPDATE / DELETE / INSERT</li>
+          <li><span class="cross">✗</span> 不能访问敏感信息</li>
+          <li><span class="cross">✗</span> 不能绕过权限控制</li>
+          <li><span class="check">✓</span> 所有 SQL 都是只读查询（SELECT）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Knowledge Import Pipeline (Skill #7) -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">知识库扩充流程</h2>
+    <p class="section-desc">Skill #7 的详细处理流水线 — 将任意格式的原始资料自动转换为结构化知识库内容</p>
+
+    <h3 style="font-size:15px; font-weight:700; margin-bottom:12px;">支持的输入格式</h3>
+    <div class="ki-formats">
+      <div class="ki-format-chip"><span>📊</span> Excel 表格</div>
+      <div class="ki-format-chip"><span>📝</span> Word 文档</div>
+      <div class="ki-format-chip"><span>💾</span> SQL 脚本</div>
+      <div class="ki-format-chip"><span>📕</span> PDF 文档</div>
+      <div class="ki-format-chip"><span>📃</span> Markdown</div>
+      <div class="ki-format-chip"><span>💬</span> 聊天记录</div>
+      <div class="ki-format-chip"><span>🎙️</span> 会议纪要</div>
+      <div class="ki-format-chip"><span>📧</span> 邮件摘要</div>
+      <div class="ki-format-chip"><span>📋</span> 需求文档</div>
+    </div>
+
+    <h3 style="font-size:15px; font-weight:700; margin-bottom:16px;">7 步处理流水线</h3>
+    <div class="ki-pipeline">
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--blue);">1</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--blue);">智能识别</div>
+          <div class="ki-step-desc">读取文件内容，分析内容类型（表结构定义 / 业务规则 / SQL 脚本 / 指标说明 / 混合内容），判断涉及的知识层级</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--purple);">2</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--purple);">提取 & 补全</div>
+          <div class="ki-step-desc">从原始内容中提取关键信息，智能补全缺失字段（如推断 aliases、data_type），根据上下文推断实体间关系</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--orange);">3</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--orange);">确定写入目标</div>
+          <div class="ki-step-desc">根据内容类型映射到知识库的对应层级和目录，混合内容拆分到多个层级（见下方映射表）</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--green);">4</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--green);">格式化 & 组织</div>
+          <div class="ki-step-desc">使用对应层的 TEMPLATE.yaml 作为骨架，标准化字段名和格式；如果包含 SQL 片段，转换为 Trino 语法</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--cyan);">5</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--cyan);">质量检查</div>
+          <div class="ki-step-desc">逐项自检：字段名是否与 schema 一致、SQL 条件是否可执行、aliases 是否有歧义、是否引用了不存在的实体或维度</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--accent);">6</div>
+          <div class="ki-step-line"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--accent-light);">写入知识库</div>
+          <div class="ki-step-desc">生成目标文件并写入 knowledge/ 对应子目录。混合内容可能一次生成多个文件（如一个 table YAML + 两个 event YAML + 一个 metric YAML）</div>
+        </div>
+      </div>
+      <div class="ki-step">
+        <div class="ki-step-left">
+          <div class="ki-step-dot" style="background:var(--pink);">7</div>
+          <div class="ki-step-line" style="background:transparent;"></div>
+        </div>
+        <div class="ki-step-right">
+          <div class="ki-step-title" style="color:var(--pink);">归档原始文件</div>
+          <div class="ki-step-desc">将原始文件移动到 raw_knowledge/processed/，创建处理日志（含处理摘要、生成文件列表、不确定项），输出详细报告给用户</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ki-mapping-title">内容类型 → 知识层级映射</div>
+    <div class="ki-mapping-grid">
+      <div class="ki-map-card">
+        <div class="from">表结构 / DDL / 字段说明</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span class="dir-layer-dot" style="background:var(--green);"></span> schema/tables/*.yaml</div>
+      </div>
+      <div class="ki-map-card">
+        <div class="from">业务术语 / 口径定义 / 实体关系</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span class="dir-layer-dot" style="background:var(--orange);"></span> semantics/**/*.yaml</div>
+      </div>
+      <div class="ki-map-card">
+        <div class="from">通用计算逻辑 / SQL 模板</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span class="dir-layer-dot" style="background:var(--purple);"></span> patterns/*.yaml</div>
+      </div>
+      <div class="ki-map-card">
+        <div class="from">指标名称 / KPI 定义</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span class="dir-layer-dot" style="background:var(--blue);"></span> metrics/*.yaml</div>
+      </div>
+      <div class="ki-map-card">
+        <div class="from">Trino 语法 / 函数说明</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span class="dir-layer-dot" style="background:var(--green);"></span> schema/trino_syntax.md</div>
+      </div>
+      <div class="ki-map-card">
+        <div class="from">混合内容文档</div>
+        <div class="arrow-down">↓</div>
+        <div class="to"><span style="color:var(--yellow);">⚡</span> 拆分写入多个层级</div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px;">
+      <div style="font-size:14px; font-weight:700; margin-bottom:10px;">质量评级标准</div>
+      <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:8px;">
+        <div style="text-align:center; font-size:14px; padding:8px; border-radius:var(--radius-sm); background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2);">
+          <div style="font-size:18px; margin-bottom:4px;">⭐</div>
+          <div style="color:var(--red); font-weight:600;">1 分</div>
+          <div style="color:var(--text-dim); margin-top:2px;">仅类型正确</div>
+        </div>
+        <div style="text-align:center; font-size:14px; padding:8px; border-radius:var(--radius-sm); background:rgba(251,146,60,0.08); border:1px solid rgba(251,146,60,0.2);">
+          <div style="font-size:18px; margin-bottom:4px;">⭐⭐</div>
+          <div style="color:var(--orange); font-weight:600;">2 分</div>
+          <div style="color:var(--text-dim); margin-top:2px;">结构完整</div>
+        </div>
+        <div style="text-align:center; font-size:14px; padding:8px; border-radius:var(--radius-sm); background:rgba(251,191,36,0.08); border:1px solid rgba(251,191,36,0.2);">
+          <div style="font-size:18px; margin-bottom:4px;">⭐⭐⭐</div>
+          <div style="color:var(--yellow); font-weight:600;">3 分</div>
+          <div style="color:var(--text-dim); margin-top:2px;">字段准确</div>
+        </div>
+        <div style="text-align:center; font-size:14px; padding:8px; border-radius:var(--radius-sm); background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2);">
+          <div style="font-size:18px; margin-bottom:4px;">⭐⭐⭐⭐</div>
+          <div style="color:var(--blue); font-weight:600;">4 分</div>
+          <div style="color:var(--text-dim); margin-top:2px;">关系完备</div>
+        </div>
+        <div style="text-align:center; font-size:14px; padding:8px; border-radius:var(--radius-sm); background:rgba(74,222,128,0.08); border:1px solid rgba(74,222,128,0.2);">
+          <div style="font-size:18px; margin-bottom:4px;">⭐⭐⭐⭐⭐</div>
+          <div style="color:var(--green); font-weight:600;">5 分</div>
+          <div style="color:var(--text-dim); margin-top:2px;">可直接使用</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Feedback Mechanism (Enhanced) -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">持续学习闭环</h2>
+    <p class="section-desc">通过双通道反馈机制持续改进知识库质量 — SQL 出错时精确定位问题层级，知识缺失时主动记录缺口</p>
+
+    <h3 style="font-size:15px; font-weight:700; margin-bottom:14px;">双通道反馈</h3>
+    <div class="fb-channels">
+      <div class="fb-channel" style="border-color:rgba(248,113,113,0.3);">
+        <div class="fb-channel-header" style="background:linear-gradient(135deg, rgba(248,113,113,0.06), transparent);">
+          <span style="font-size:18px;">🔴</span> corrections/ — SQL 纠错记录
+        </div>
+        <div class="fb-channel-body">
+          <div class="fb-trigger">触发：用户反馈 SQL 结果不正确时</div>
+          <ul class="fb-fields">
+            <li style="--dot-color:var(--red);">原始需求描述</li>
+            <li style="--dot-color:var(--red);">错误的 SQL 及结果</li>
+            <li style="--dot-color:var(--red);">正确的 SQL 及期望结果</li>
+            <li style="--dot-color:var(--red);">根因分析（见下方）</li>
+            <li style="--dot-color:var(--red);">涉及的知识文件列表</li>
+          </ul>
+          <div class="fb-action">
+            <strong>后续动作：</strong>根据根因定位修正相应知识文件，防止同类问题复现
+          </div>
+        </div>
+      </div>
+
+      <div class="fb-channel" style="border-color:rgba(251,191,36,0.3);">
+        <div class="fb-channel-header" style="background:linear-gradient(135deg, rgba(251,191,36,0.06), transparent);">
+          <span style="font-size:18px;">🟡</span> knowledge_gaps/ — 知识缺口记录
+        </div>
+        <div class="fb-channel-body">
+          <div class="fb-trigger">触发：AI 发现知识库缺少必要信息，无法生成 SQL 时</div>
+          <ul class="fb-fields">
+            <li style="--dot-color:var(--yellow);">缺口类型（表/字段/语义/模式/指标）</li>
+            <li style="--dot-color:var(--yellow);">缺口具体内容描述</li>
+            <li style="--dot-color:var(--yellow);">优先级（高/中/低）</li>
+            <li style="--dot-color:var(--yellow);">状态（待补充/已补充/无法补充）</li>
+            <li style="--dot-color:var(--yellow);">建议的补充位置</li>
+          </ul>
+          <div class="fb-action">
+            <strong>后续动作：</strong>收集到足够信息后，通过 Skill #7 或手动补充到知识库
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fb-error-loc">
+      <div class="fb-error-loc-title">五点错误定位法</div>
+      <p style="font-size:13px; color:var(--text-dim); margin-bottom:14px;">得益于可组合架构的层间解耦，SQL 错误可以被精确定位到具体的语义原子或计算模式，实现「改一处、影响全局」</p>
+      <div class="fb-checkpoints">
+        <div class="fb-checkpoint">
+          <div class="cp-layer" style="background:rgba(251,146,60,0.15); color:var(--orange);">Entity</div>
+          <div class="cp-question">primary_key 正确吗？<br>source_table 正确吗？</div>
+        </div>
+        <div class="fb-cp-arrow">→</div>
+        <div class="fb-checkpoint">
+          <div class="cp-layer" style="background:rgba(251,146,60,0.15); color:var(--orange);">Event</div>
+          <div class="cp-question">type_condition 正确吗？<br>source_table 正确吗？</div>
+        </div>
+        <div class="fb-cp-arrow">→</div>
+        <div class="fb-checkpoint">
+          <div class="cp-layer" style="background:rgba(251,146,60,0.15); color:var(--orange);">Dimension</div>
+          <div class="cp-question">sql_condition / sql_expr<br>条件逻辑正确吗？</div>
+        </div>
+        <div class="fb-cp-arrow">→</div>
+        <div class="fb-checkpoint">
+          <div class="cp-layer" style="background:rgba(192,132,252,0.15); color:var(--purple);">Pattern</div>
+          <div class="cp-question">SQL 模板逻辑正确吗？<br>参数类型正确吗？</div>
+        </div>
+        <div class="fb-cp-arrow">→</div>
+        <div class="fb-checkpoint">
+          <div class="cp-layer" style="background:rgba(96,165,250,0.15); color:var(--blue);">Metric</div>
+          <div class="cp-question">pattern 选择正确吗？<br>参数绑定正确吗？</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fb-root-causes">
+      <div class="fb-root-causes-title">根因分类 & 处置方式</div>
+      <div class="fb-rc-grid">
+        <div class="fb-rc-item">
+          <div class="rc-icon">📚</div>
+          <div>
+            <div class="rc-cause">知识库缺失</div>
+            <div>缺少相关表、字段或业务规则定义</div>
+            <div class="rc-action">→ 补充到 knowledge/ 对应层</div>
+          </div>
+        </div>
+        <div class="fb-rc-item">
+          <div class="rc-icon">🔧</div>
+          <div>
+            <div class="rc-cause">知识定义不准确</div>
+            <div>sql_condition 或 type_condition 写错</div>
+            <div class="rc-action">→ 修正具体的 YAML 文件</div>
+          </div>
+        </div>
+        <div class="fb-rc-item">
+          <div class="rc-icon">❓</div>
+          <div>
+            <div class="rc-cause">需求理解偏差</div>
+            <div>AI 对用户意图的理解不准确</div>
+            <div class="rc-action">→ 调整澄清逻辑 / 补充 aliases</div>
+          </div>
+        </div>
+        <div class="fb-rc-item">
+          <div class="rc-icon">⚠️</div>
+          <div>
+            <div class="rc-cause">其他原因</div>
+            <div>Trino 语法差异、数据质量等</div>
+            <div class="rc-action">→ 按具体情况针对性处理</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:15px; font-weight:700; margin-bottom:14px;">反馈闭环</h3>
+    <div class="fb-closed-loop">
+      <div class="fb-cl-node">
+        <div class="cl-icon">💬</div>
+        <div class="cl-label">用户反馈<br><small>SQL 结果不对 / 缺少信息</small></div>
+      </div>
+      <div class="fb-cl-arrow">→</div>
+      <div class="fb-cl-node">
+        <div class="cl-icon">🔍</div>
+        <div class="cl-label">五点定位<br><small>精确到具体语义原子</small></div>
+      </div>
+      <div class="fb-cl-arrow">→</div>
+      <div class="fb-cl-node">
+        <div class="cl-icon">📝</div>
+        <div class="cl-label">记录 feedback/<br><small>corrections / knowledge_gaps</small></div>
+      </div>
+      <div class="fb-cl-arrow">→</div>
+      <div class="fb-cl-node">
+        <div class="cl-icon">✏️</div>
+        <div class="cl-label">修正知识库<br><small>改一处，影响全局</small></div>
+      </div>
+      <div class="fb-cl-arrow">→</div>
+      <div class="fb-cl-node">
+        <div class="cl-icon">✅</div>
+        <div class="cl-label">后续查询更准确<br><small>持续改进循环</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- Design Philosophy -->
+<section class="fade-in">
+  <div class="container">
+    <h2 class="section-title">设计原则</h2>
+    <p class="section-desc">五条核心设计原则，确保系统可维护、可扩展、可穷尽</p>
+    <div class="workflow-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+      <div class="workflow-card" style="border-left: 3px solid var(--accent);">
+        <h3>单一事实来源</h3>
+        <p>每个业务语义只在一个地方定义（Semantics），不在多层重复描述。修改活跃行为定义？只改 semantics/events/active_behavior.yaml 一处。</p>
+      </div>
+      <div class="workflow-card" style="border-left: 3px solid var(--purple);">
+        <h3>组合而非枚举</h3>
+        <p>知识库的价值在于「组合能力」。1000 个指标不是 1000 份文档，而是少量语义原子和计算模式的组合空间。</p>
+      </div>
+      <div class="workflow-card" style="border-left: 3px solid var(--orange);">
+        <h3>越高层越薄</h3>
+        <p>指标目录（Metric）是最薄的一层，每条只有 4-8 行配置。它不承载定义职责，只是一个「配方」。</p>
+      </div>
+      <div class="workflow-card" style="border-left: 3px solid var(--green);">
+        <h3>可穷尽的边界</h3>
+        <p>真正需要维护的语义原子（~100 个）和计算模式（~10 个）是有限的，可以穷尽、可以维护。</p>
+      </div>
+      <div class="workflow-card" style="border-left: 3px solid var(--cyan);">
+        <h3>改一处，影响全局</h3>
+        <p>口径变更只动 Semantics，模式调整只动 Pattern。修改「活跃行为」范围？所有依赖它的指标自动更新。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    ChatBI 系统架构文档 · 基于可组合知识架构设计 · 自动生成于 2026-04-16
+  </div>
+</footer>
+
+<script>
+function switchTab(btn, id) {
+  var container = btn.closest('.tab-container');
+  container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  container.querySelector('#tab-' + id).classList.add('active');
+}
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>

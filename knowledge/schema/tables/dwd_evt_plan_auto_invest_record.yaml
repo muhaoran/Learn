@@ -1,0 +1,69 @@
+table_id: "dwd_evt_plan_auto_invest_record"
+name: "定投执行记录表"
+full_name: "fundx_dwd.dwd_evt_plan_auto_invest_record_s"
+layer: DWD
+description: "记录每笔定投的实际执行结果，包含成功/失败状态和失败原因，用于定投分析和异常排查"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - uid
+  - dt
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期（定投执行日期）"
+    nullable: false
+    is_partition: true
+    example: "2025-01-07"
+
+  - name: "uid"
+    type: "bigint"
+    description: "蛋卷用户ID（dj_uid）"
+    nullable: false
+    is_partition: false
+
+  - name: "pro_code"
+    type: "varchar"
+    description: "定投产品代码"
+    nullable: false
+    is_partition: false
+    example: "TRI001%（三分法系列用 LIKE 匹配）"
+
+  - name: "invest_amount"
+    type: "decimal"
+    description: "定投金额（元）"
+    nullable: true
+    is_partition: false
+
+  - name: "status"
+    type: "varchar"
+    description: "执行状态"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "success"
+        description: "定投成功"
+      - value: "failed"
+        description: "定投失败"
+
+  - name: "err_msg"
+    type: "varchar"
+    description: "失败原因描述"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "统计三分法定投失败原因：pro_code LIKE 'TRI001%' AND status = 'failed'"
+  - "TRI001 是三分法，TRI002 是有知有行养老计划"
+
+related_tables:
+  - table: "fundx_dwd.dwd_evt_plan_auto_invest_s"
+    join_field: "uid, pro_code"
+    join_type: "N:1"
+    purpose: "关联定投计划信息"

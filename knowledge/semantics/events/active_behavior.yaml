@@ -1,0 +1,13 @@
+event_id: "active_behavior"
+name: "用户活跃行为"
+entity: "user"
+description: "用户在平台上产生的任意行为，包括浏览、发帖、评论、点赞、交易等，是判断用户「活跃」的依据"
+
+source_table: "dwd_user_behavior"
+# 整张表记录的都是活跃行为，不需要 type_condition
+# 如需区分特定行为类型，使用维度 user_behavior_type 过滤
+
+aliases:
+  - "活跃"
+  - "有行为"
+  - "active"

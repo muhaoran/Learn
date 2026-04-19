@@ -1,0 +1,25 @@
+metric_id: "d1_retention_rate"
+name: "新用户次日留存率"
+description: "某日新增用户中，在次日（注册后第1天）仍然活跃的用户占比。分子=次日活跃的新用户数，分母=当日新增用户数"
+
+pattern: "cohort_retention"
+
+pattern_params:
+  entity: "user"
+  cohort_event: "registration"
+  retain_event: "active_behavior"
+  cohort_date: "register_date = ${base_date}"
+  offset_days: 1
+
+aliases:
+  - "次日留存"
+  - "次日留存率"
+  - "D1留存"
+  - "D1留存率"
+  - "Day 1 Retention"
+
+notes:
+  - "需要等到 D1（次日）结束后才能得到完整数据"
+  - "留存的活跃定义同 DAU（任意行为均算活跃）"
+  - "分母是注册当天的新增用户数，不是当天所有用户"
+  - "不同渠道的 D1 留存率差异较大，建议配合渠道维度分析"

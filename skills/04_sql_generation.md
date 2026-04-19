@@ -27,85 +27,51 @@
 
 ## 处理步骤
 
-### 步骤 1: 确定 SQL 结构
+### 步骤 1: 展开 Pattern 模板
 
-**根据需求复杂度选择结构**:
+**这是新架构下 SQL 生成的核心步骤。**
 
-#### 简单查询（单表）
-```sql
-SELECT 
-    [字段]
-FROM 
-    [表]
-WHERE 
-    [条件]
-GROUP BY 
-    [分组]
-ORDER BY 
-    [排序];
+知识检索已经提供了：
+- Pattern 的 `sql_template`
+- 每个参数对应的语义解析结果（表名、字段名、SQL 条件）
+
+现在按以下规则将参数代入模板：
+
+| 参数类型 | 展开规则 |
+|----------|----------|
+| `Entity` | `${entity.primary_key}` → 实体的主键字段名（如 `user_id`） |
+| `Event` | `${event.source_table}` → 事件的表名；`${event.type_condition}` → 类型过滤条件（如有） |
+| `Dimension` | `${dimension.sql_expr}` → 字段名或表达式；需要 JOIN 时加入 JOIN 子句 |
+| `NamedValue` | `${named_value.sql_condition}` → 展开为子查询条件 |
+| `date_expr` | 直接替换为 Trino 日期表达式 |
+
+**示例**（count_distinct Pattern，DAU 需求）：
 ```
+参数代入前（模板）:
+  COUNT(DISTINCT ${entity.primary_key}) FROM ${event.source_table} WHERE ${time_window}
 
-#### 中等复杂度（多表关联）
-```sql
-SELECT 
-    [字段]
-FROM 
-    [主表]
-LEFT JOIN 
-    [关联表]
-ON 
-    [关联条件]
-WHERE 
-    [条件]
-GROUP BY 
-    [分组]
-ORDER BY 
-    [排序];
-```
-
-#### 高复杂度（使用 CTE）
-```sql
-WITH cte1 AS (
-    [子查询1]
-),
-cte2 AS (
-    [子查询2]
-)
-SELECT 
-    [字段]
-FROM 
-    cte1
-LEFT JOIN 
-    cte2
-ON 
-    [关联条件]
-GROUP BY 
-    [分组]
-ORDER BY 
-    [排序];
+参数代入后:
+  COUNT(DISTINCT user_id) FROM dwd_user_behavior WHERE date = '2024-01-01'
 ```
 
 ### 步骤 2: 选择数据表
 
-**原则**: 
-1. 优先使用汇总表（ADS > DWS > DWD > ODS）
-2. 如果需要自定义逻辑，使用明细表
-3. 参考相似案例的表选择
-4. **使用 Trino 语法查询所有表**
+**原则**:
+1. 优先使用汇总表（ADS > DWS > DWD > ODS），已由 Schema 层的 `layer` 字段标注
+2. 如果 Pattern 需要的语义对象只存在于明细表，则使用明细表
+3. **所有 SQL 必须使用 Trino 语法**
 
 **决策流程**:
 ```
-是否有现成的汇总表？
-├─ 是 → 汇总表是否满足需求？
-│  ├─ 是 → 使用汇总表 ✅
-│  └─ 否 → 使用明细表
-└─ 否 → 使用明细表
+Event 对应的 source_table 是什么层？
+├─ DWS/ADS → 直接使用，性能好 ✅
+└─ DWD → 使用，但必须加分区条件 ⚠️
 ```
 
 **示例**:
-- 查询 DAU → 使用 `dws_user_daily`（有预计算的 DAU）
-- 查询特定行为的用户数 → 使用 `dwd_user_behavior`（需要筛选 behavior_type）
-- 查询留存率 → 使用 `dwd_user_register` + `dwd_user_behavior`
+- 查询 DAU（active_behavior）→ `dwd_user_behavior`（明细），或改用 `dws_user_daily`（汇总，is_active=1）
+- 查询新增用户数（registration）→ `dwd_user_register`
+- 查询留存率（cohort_retention）→ `dwd_user_register` + `dwd_user_behavior`
 
 ### 步骤 3: 构建 WHERE 条件
 
@@ -178,7 +144,7 @@ LEFT JOIN
     dwd_user_behavior b
 ON 
     r.user_id = b.user_id
-    AND b.date = DATE_ADD(r.register_date, INTERVAL 1 DAY)
+    AND b.date = date_add('day', 1, r.register_date)
 ```
 
 **注意**:
@@ -283,22 +249,21 @@ SELECT ...
 **需求**: 查询昨天的 DAU
 
 **生成过程**:
-1. 确定结构: 简单查询（单表）
-2. 选择表: `dws_user_daily`
-3. 构建 WHERE: `date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)`
-4. 构建 SELECT: `COUNT(DISTINCT user_id) as dau`
-5. 不需要 GROUP BY（只要总数）
+1. Pattern: `count_distinct`，参数: entity=user, event=active_behavior, time_window=昨天
+2. 语义展开: primary_key=user_id, source_table=dwd_user_behavior
+3. 时间展开: `date = date_add('day', -1, current_date)`（Trino 语法）
+4. 可优化：改用汇总表 dws_user_daily（is_active=1），性能更好
 
 **生成的 SQL**:
 ```sql
--- 查询昨天的 DAU
+-- 查询昨天的 DAU（使用汇总表，性能好）
 SELECT 
     date,
-    COUNT(DISTINCT user_id) as dau
+    COUNT(DISTINCT user_id) AS dau
 FROM 
     dws_user_daily
 WHERE 
-    date = DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)
+    date = date_add('day', -1, current_date)
     AND is_active = 1
 GROUP BY 
     date;
@@ -309,63 +274,52 @@ GROUP BY
 **需求**: 计算 1 月份新用户的次日留存率，按渠道分
 
 **生成过程**:
-1. 确定结构: 高复杂度（使用 CTE）
-2. 选择表: `dwd_user_register` + `dwd_user_behavior`
-3. CTE1: 获取新用户
-4. CTE2: 获取留存用户
-5. 主查询: 关联计算留存率
+1. Pattern: `cohort_retention`，参数: entity=user, cohort_event=registration, retain_event=active_behavior, offset_days=1, group_by=user_register_channel
+2. 展开模板：cohort 表 = dwd_user_register，retain 表 = dwd_user_behavior
+3. group_by 展开：register_channel 来自 dwd_user_register，已在 cohort CTE 中，无需额外 JOIN
 
 **生成的 SQL**:
 ```sql
 -- 计算 2024 年 1 月新用户的次日留存率，按注册渠道分组
 
-WITH new_users AS (
-    -- 获取 1 月份的新注册用户
+WITH cohort AS (
+    -- 基准：1 月份新注册用户
     SELECT 
         user_id,
-        DATE(register_time) as register_date,
+        register_date,
         register_channel
     FROM 
         dwd_user_register
     WHERE 
-        register_date >= '2024-01-01'
-        AND register_date < '2024-02-01'
+        register_date >= DATE '2024-01-01'
+        AND register_date < DATE '2024-02-01'
 ),
-retention_users AS (
-    -- 获取次日活跃的用户
-    SELECT 
-        nu.user_id,
-        nu.register_date,
-        nu.register_channel
+retained AS (
+    -- 留存：在注册后第 1 天有活跃行为
+    SELECT DISTINCT b.user_id
     FROM 
-        new_users nu
-    INNER JOIN 
-        dwd_user_behavior ub
-    ON 
-        nu.user_id = ub.user_id
-        -- 关键: D1 = D0 + 1 天
-        AND ub.date = DATE_ADD(nu.register_date, INTERVAL 1 DAY)
+        dwd_user_behavior b
+    JOIN cohort c ON b.user_id = c.user_id
+    WHERE 
+        b.date = date_add('day', 1, c.register_date)
 )
 SELECT 
-    nu.register_date,
-    nu.register_channel,
-    COUNT(DISTINCT nu.user_id) as new_users_count,
-    COUNT(DISTINCT ru.user_id) as retention_users_count,
-    ROUND(COUNT(DISTINCT ru.user_id) * 100.0 / COUNT(DISTINCT nu.user_id), 2) as retention_rate
+    c.register_date,
+    c.register_channel,
+    COUNT(DISTINCT c.user_id)                                         AS cohort_size,
+    COUNT(DISTINCT r.user_id)                                         AS retained_count,
+    ROUND(COUNT(DISTINCT r.user_id) * 100.0
+        / NULLIF(COUNT(DISTINCT c.user_id), 0), 2)                   AS retention_rate
 FROM 
-    new_users nu
+    cohort c
 LEFT JOIN 
-    retention_users ru
-ON 
-    nu.user_id = ru.user_id
-    AND nu.register_date = ru.register_date
-    AND nu.register_channel = ru.register_channel
+    retained r ON c.user_id = r.user_id
 GROUP BY 
-    nu.register_date,
-    nu.register_channel
+    c.register_date,
+    c.register_channel
 ORDER BY 
-    nu.register_date,
-    nu.register_channel;
+    c.register_date,
+    c.register_channel;
 ```
 
 ---
@@ -388,7 +342,7 @@ SELECT COUNT(DISTINCT user_id) as dau  -- 去重
 
 ### 2. 遵循 SQL 最佳实践
 
-参考 `knowledge/data_assets/best_practices.md`：
+参考 `knowledge/schema/README.md` 中的 JOIN 编写原则：
 - 必须使用分区字段
 - 避免 SELECT *
 - 正确去重

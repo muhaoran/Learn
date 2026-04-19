@@ -1,0 +1,42 @@
+# 维度（Dimension）模板
+#
+# 维度是实体的属性，值必须是有限离散的分类值，用于 GROUP BY 或 WHERE 过滤
+#
+# 两种业务场景二选一：
+#   实体属性：实体本身具备这个属性，值可从表中直接读取或计算（渠道、平台、新老用户类型）
+#             → 填 source_table + join_key + sql_expr，用 known_values 记录枚举含义
+#   计算属性：业务定义的属性，值无法从字段直接读取，需通过行为或关联数据计算（活跃状态、首购状态）
+#             → 不填 sql_expr，用 named_values 的自包含子查询定义每个取值的归属条件
+
+dimension_id: "your_dimension_id"
+name: "中文名"
+entity: "user"                       # 对应 entities/ 中的 entity_id
+description: ""
+
+aliases:
+  - ""
+
+# ── 实体属性 ─────────────────────────────────────────────────────────
+source_table: "schema.table_name"
+join_key: "user_id"
+sql_expr: "channel"                  # 字段名或 CASE WHEN ... END
+
+known_values:                        # 可选：记录枚举值的业务含义
+  - value: ""
+    name: ""
+
+# ── 计算属性 ─────────────────────────────────────────────────────────
+named_values:
+  - value_id: ""
+    name: ""
+    description: ""
+    depends_on_events:
+      - event_id
+    parameters:
+      n:
+        type: integer
+        default: 30
+        description: ""
+    sql_condition: ""                 # 自包含子查询，如 "user_id IN (SELECT ...)"
+    aliases:
+      - ""

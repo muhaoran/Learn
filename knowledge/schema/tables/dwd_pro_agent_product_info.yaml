@@ -1,0 +1,19 @@
+table_id: "dwd_pro_agent_product_info"
+name: "基金产品维表"
+full_name: "fundx_dwd.dwd_pro_agent_product_info_s"
+layer: DWD
+description: "沉淀历史全量基金产品信息，是公募产品分析的基础维表"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅描述为历史全量产品维表，字段定义需补录"
+  - "作为公募产品主维表，建议与交易/持仓表通过 pro_code 关联"

@@ -1,0 +1,23 @@
+# 实体（Entity）定义模板
+
+entity_id: "your_entity_id"         # 英文标识，全小写下划线
+name: "中文名"
+description: "这个实体是什么，一句话说清楚"
+
+primary_key: "id_field"             # 该实体的主键字段名（规范名），COUNT DISTINCT 时优先使用此字段
+
+# 可选：如果不同表中主键字段名不一致，在此列出等价的别名字段
+# AI 生成 SQL 时，若目标表中不存在 primary_key，则依次尝试 id_aliases 中的字段
+id_aliases:
+  - "uid"                            # 老业务表中的字段名
+  - "account_id"                     # 某些宽表中的字段名
+
+# 可选：实体对应的锚表（快照/宽表），用于非事件型指标的 FROM 起点
+# 一个实体可以有多个锚表，指定不同业务域的数据来源；指标定义时需指定使用哪个 key
+anchor_tables:
+  your_key: "schema.table_name" # key 自定义命名（如 holding），指标通过 anchor_table: "your_key" 引用
+
+aliases:
+  - "别名1"
+  - "别名2"
+  - "EnglishAlias"

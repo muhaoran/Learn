@@ -29,12 +29,13 @@
 
 | 文档 | 说明 | 状态 |
 |------|------|------|
-| [01_business_knowledge_design.md](01_business_knowledge_design.md) | 业务知识层设计逻辑 | ✅ 完成 |
-| 02_knowledge_retrieval_design.md | 知识检索策略设计 | ⏳ 待创建 |
-| 03_sql_generation_design.md | SQL 生成策略设计 | ⏳ 待创建 |
-| 04_clarification_strategy_design.md | 需求澄清策略设计 | ⏳ 待创建 |
-| 05_validation_design.md | 验证机制设计 | ⏳ 待创建 |
-| 06_feedback_loop_design.md | 反馈闭环设计 | ⏳ 待创建 |
+| [01_business_knowledge_design.md](01_business_knowledge_design.md) | 业务知识层设计逻辑（初版四层方案）| ⚠️ 已作废，请看 02 |
+| [02_composable_knowledge_architecture.md](02_composable_knowledge_architecture.md) | 可组合知识架构（解决维护成本问题的重构方案） | ✅ 完成 |
+| 03_knowledge_retrieval_design.md | 知识检索策略设计 | ⏳ 待创建 |
+| 04_sql_generation_design.md | SQL 生成策略设计 | ⏳ 待创建 |
+| 05_clarification_strategy_design.md | 需求澄清策略设计 | ⏳ 待创建 |
+| 06_validation_design.md | 验证机制设计 | ⏳ 待创建 |
+| 07_feedback_loop_design.md | 反馈闭环设计 | ⏳ 待创建 |
 
 ---
 

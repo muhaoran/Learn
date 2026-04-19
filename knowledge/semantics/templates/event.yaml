@@ -1,0 +1,23 @@
+# 业务过程（Event）定义模板
+#
+# 业务过程描述"某件事发生了"，回答两个问题：
+#   1. 这件事记录在哪张表？
+#   2. 如果表中混合了多种事件，怎么识别这一种？
+#
+# 注意：Event 不包含属性过滤（如"渠道=app_store 的注册"）
+# 属性过滤应通过 Dimension 的 named_values 定义，或在 Metric 中组合
+
+event_id: "your_event_id"           # 英文标识，全小写下划线
+name: "中文名"
+entity: "user"                      # 该事件的主体实体 entity_id
+description: "这件事是什么，一句话说清楚（只描述事实，不包含限定条件）"
+
+source_table: "schema.table_name"   # 该事件在哪张表中记录，填写实际全名
+
+# 可选：如果 source_table 中混合了多种事件，用此字段区分
+# 如果整张表就是一种事件（如 dwd_user_register），则不需要
+type_condition: "behavior_type = 'create_post'"
+
+aliases:
+  - "别名1"
+  - "别名2"

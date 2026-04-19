@@ -1,0 +1,26 @@
+table_id: "ads_prodept_evt_juzi_message_date"
+name: "全量聊天记录汇总表"
+full_name: "fundx_ads.ads_prodept_evt_juzi_message_date_i"
+layer: ADS
+description: "句子系统的全量聊天记录，包含私聊和群聊，是私域运营中最常用的聊天行为汇总表"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "列信息待补充：该表在 PDF 中仅以表名出现，具体字段需从实际数据或研发文档补充"
+  - "与 fundx_dwd.dwd_evt_wechat_private_chat_record_i 的区别：本表为全量（含群聊），后者仅私聊"
+  - "来源：句子（Juzi）系统聊天数据"
+
+related_tables:
+  - table: "fundx_dwd.dwd_evt_wechat_private_chat_record_i"
+    join_field: "from_id"
+    join_type: "N:1"
+    purpose: "私聊明细（本表子集）"

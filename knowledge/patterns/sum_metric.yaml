@@ -1,0 +1,97 @@
+pattern_id: "sum_metric"
+name: "求和类指标"
+description: "对某个数值字段求和，如总发帖数、总评论数、总时长等"
+
+parameters:
+  sum_field:
+    type: "string（字段名）"
+    required: true
+    description: "要求和的数值字段名"
+
+  event:
+    type: "Event"
+    required: false
+    description: "统计范围对应的业务过程；其 type_condition 展开为 WHERE 过滤条件。event 型指标必填；快照型指标不填，改用 entity + anchor_table"
+
+  entity:
+    type: "Entity"
+    required: false
+    description: "快照型指标的统计实体；配合 anchor_table 指定数据来源表。仅在不使用 event 时填写"
+
+  anchor_table:
+    type: "string（entity.anchor_tables 的 key）"
+    required: false
+    description: "指定使用 entity.anchor_tables 中的哪张锚表作为 FROM 来源；如 'holding' 对应 user.anchor_tables.holding"
+
+  where_dimension_values:
+    type: "list<{dimension_id: Dimension, value: string}>"
+    required: false
+    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+
+  where_named_values:
+    type: "Dimension.NamedValue[]"
+    required: false
+    description: "按命名分群过滤，展开为 AND primary_key IN (sql_condition)；多个条件取交集（AND）"
+
+  time_window:
+    type: "date_expr | {end_date: date, window_days: integer}"
+    required: true
+    description: |
+      时间范围，支持两种形态：
+      - 固定窗口（date_expr）：直接写 SQL 条件嵌入 WHERE，如 dt = '2024-01-01'
+      - 滚动窗口（{end_date, window_days}）：展开为 date > date_add('day', -window_days, DATE 'end_date') AND date <= DATE 'end_date'
+
+  group_by:
+    type: "Dimension[]"
+    required: false
+    description: "分组维度；有 sql_expr 的展开为字段直接分组，有 named_values 的展开为 CASE WHEN 分组列"
+
+sql_template: |
+  SELECT
+    ${group_by.expr, ...}
+    SUM(${sum_field}) AS total
+  FROM ${event.source_table | entity.anchor_tables[anchor_table]}   -- event 型从 event 推导；快照型从 entity.anchor_tables 推导
+  ${LEFT JOIN dim.source_table ON dim.join_key}    -- group_by / where_dimension_values 需要时展开
+  WHERE ${time_window}
+    ${AND event.type_condition}
+    ${AND where_dimension_values.sql_expr = value, ...}
+    ${AND where_named_values.sql_condition, ...}
+  ${GROUP BY group_by.expr, ...}
+
+example_usage:
+  - description: "统计2024年1月、来自邀请注册渠道的用户公募买入总金额，按投资账户类型分组"
+    parameters:
+      sum_field: "init_amount"
+      event: "fund_purchase"      # type_condition: is_private = 0 AND trade_mode IN (1,2,3,4,5)
+      where_dimension_values:
+        user_register_channel: "invite"   # 需 LEFT JOIN dwd_user_register ON uid = user_id
+      group_by:
+        - holding_invest_account          # sql_expr: invest_account_code（字段已在 source_table 中）
+      time_window: "dt BETWEEN date '2024-01-01' AND date '2024-01-31'"
+    generated_sql: |
+      SELECT
+        o.invest_account_code,
+        SUM(o.init_amount) AS total
+      FROM fundx_dwd.dwd_evt_parent_money_order_s o
+      LEFT JOIN dwd_user_register r ON o.uid = r.user_id
+      WHERE o.dt BETWEEN date '2024-01-01' AND date '2024-01-31'
+        AND o.is_private = 0
+        AND o.trade_mode IN (1,2,3,4,5)
+        AND r.register_channel = 'invite'
+      GROUP BY o.invest_account_code
+
+  - description: "统计某天三分法子账户的持仓总金额（快照型，无 event）"
+    parameters:
+      sum_field: "amount"
+      entity: "user"
+      anchor_table: "holding"     # → user.anchor_tables.holding = dwd_ast_pub_daily_holding_detail_i
+      where_dimension_values:
+        - dimension_id: holding_invest_account
+          value: "TRICHOTOMY"
+      time_window: "dt = '2024-01-01'"
+    generated_sql: |
+      SELECT
+        SUM(amount) AS total
+      FROM dwd_ast_pub_daily_holding_detail_i
+      WHERE dt = '2024-01-01'
+        AND invest_account_code = 'TRICHOTOMY'

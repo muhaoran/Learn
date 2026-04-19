@@ -1,0 +1,67 @@
+table_id: "ods_fundx_socialcrm_flow_detail"
+name: "SOP进入记录表"
+full_name: "fundx_ods.ods_fundx_socialcrm_flow_detail_s"
+layer: ODS
+description: "记录用户进入私域SOP流程的事件，包含进入时间、union_id、external_id等，通过flow_id区分不同SOP流程"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  row_estimate: "万级/天"
+  retention: "永久保留"
+
+primary_key:
+  - union_id
+  - flow_id
+  - create_time
+
+columns:
+  - name: "create_time"
+    type: "timestamp"
+    description: "进入SOP的时间（timestamp类型，查询时需转换）"
+    nullable: false
+    is_partition: false
+    example: "2025-01-20 10:30:00"
+
+  - name: "union_id"
+    type: "varchar"
+    description: "微信union_id（私域用户唯一标识）"
+    nullable: true
+    is_partition: false
+
+  - name: "external_id"
+    type: "varchar"
+    description: "外部ID"
+    nullable: true
+    is_partition: false
+
+  - name: "flow_id"
+    type: "varchar"
+    description: "SOP流程ID，用于区分不同SOP流程"
+    nullable: false
+    is_partition: false
+    example: "Process_078kZXGM"
+
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+notes:
+  - "create_time 为 timestamp 类型，提取日期用 substr(cast(create_time as varchar),1,10)"
+  - "提取时分秒用 substr(cast(create_time as varchar),1,19)"
+  - "转时间戳（秒）用 to_unixtime(create_time)"
+  - "通过 flow_id 筛选具体SOP流程，如 flow_id = 'Process_078kZXGM'"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+    join_field: "union_id=wechat_union_id"
+    join_type: "N:1"
+    purpose: "关联私域用户基本信息"
+  - table: "fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans"
+    join_field: "union_id"
+    join_type: "N:N"
+    purpose: "关联SOP发送记录"

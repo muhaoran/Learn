@@ -1,0 +1,69 @@
+table_id: "ods_fprofit_income_update_record_account"
+name: "账户收益更新记录表"
+full_name: "fundx_ods.ods_fprofit_income_update_record_account_s"
+layer: ODS
+description: "账户级收益与持仓更新明细，常用于组合/基金收益率、成本和AUM分析"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "plan_code"
+    type: "varchar"
+    description: "组合/计划代码"
+    nullable: true
+    is_partition: false
+
+  - name: "uid"
+    type: "bigint"
+    description: "用户ID"
+    nullable: true
+    is_partition: false
+
+  - name: "holding_type"
+    type: "varchar"
+    description: "持仓类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "plan"
+        description: "组合、基金、投顾等计划类"
+
+  - name: "volume"
+    type: "decimal"
+    description: "持仓份额"
+    nullable: true
+    is_partition: false
+
+  - name: "cost_net_value"
+    type: "decimal"
+    description: "成本净值"
+    nullable: true
+    is_partition: false
+
+  - name: "net_value"
+    type: "decimal"
+    description: "当前净值"
+    nullable: true
+    is_partition: false
+
+  - name: "hold_gain"
+    type: "decimal"
+    description: "持有收益"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "收益率分析常用口径：sum(volume*cost_net_value) 作为成本，sum(volume*net_value) 作为AUM"
+  - "过滤有效持仓需加 volume > 0"

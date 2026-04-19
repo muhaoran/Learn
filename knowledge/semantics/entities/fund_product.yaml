@@ -1,0 +1,12 @@
+entity_id: "fund_product"
+name: "公募基金产品"
+description: "公募业务中的基金产品实体，交易、持仓、行情等分析均围绕该实体展开"
+
+primary_key: "pro_code"
+anchor_table: "fundx_dwd.dwd_pro_agent_product_info_s"
+
+aliases:
+  - "基金"
+  - "基金产品"
+  - "公募产品"
+  - "product"

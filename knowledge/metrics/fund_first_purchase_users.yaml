@@ -1,0 +1,18 @@
+metric_id: "fund_first_purchase_users"
+name: "公募首购人数"
+description: "统计在指定时间范围内发生公募首购事件的去重用户数"
+
+pattern: "count_distinct"
+
+pattern_params:
+  entity: "user"
+  event: "fund_first_purchase"
+  time_window: "dt BETWEEN ${start_date} AND ${end_date}"
+
+aliases:
+  - "首购人数"
+  - "公募首购人数"
+  - "first_purchase_users"
+
+notes:
+  - "优先基于 dws_evt_parent_money_first_trade_s 口径计算"

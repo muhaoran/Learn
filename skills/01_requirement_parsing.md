@@ -32,10 +32,11 @@
 在解析需求前，必须先读取相关知识库：
 
 ```
-必读文档:
-- knowledge/business/glossary.md (业务术语表)
-- knowledge/business/metrics/ (指标定义)
-- knowledge/business/dimensions/ (维度定义)
+必读文档（优先顺序）:
+- knowledge/metrics/              (指标目录：识别用户说的是哪个有名字的指标)
+- knowledge/semantics/entities/   (实体定义：识别统计对象)
+- knowledge/semantics/events/     (业务过程：识别用户描述的业务动作)
+- knowledge/semantics/dimensions/ (维度定义：识别分组和筛选条件)
 ```
 
 ### 步骤 2: 识别指标
@@ -57,7 +58,7 @@
 {
   "metrics": ["DAU"],
   "metrics_aliases": {"DAU": "日活跃用户数"},
-  "metrics_definitions": "knowledge/business/metrics/user_metrics.md#DAU"
+  "metrics_definition_file": "knowledge/metrics/dau.yaml"
 }
 ```
 
@@ -90,7 +91,7 @@
 **方法**:
 1. 识别相对时间（最近N天、昨天、本月等）
 2. 识别绝对时间（2024-01-01、1月份等）
-3. 参考 `knowledge/business/dimensions/time_dimensions.md`
+3. 时间函数必须使用 Trino 语法（`date_add`、`current_date`）
 
 **示例**:
 - "最近 7 天" → `{"type": "relative", "value": "last_7_days", "include_today": true}`
@@ -104,7 +105,7 @@
     "type": "relative",
     "value": "last_7_days",
     "include_today": true,
-    "sql_condition": "date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY) AND date <= CURRENT_DATE()"
+    "sql_condition": "date >= date_add('day', -6, current_date) AND date <= current_date"
   }
 }
 ```
@@ -209,7 +210,7 @@
 **输入**: "查询昨天的 DAU"
 
 **处理**:
-1. 读取 `knowledge/business/glossary.md` - 确认 DAU 定义
+1. 读取 `knowledge/metrics/dau.yaml` - 确认 DAU 定义
 2. 识别指标: DAU
 3. 识别时间: 昨天
 4. 识别维度: 无（只要总数）
@@ -232,7 +233,7 @@
 **输入**: "帮我看下最近一个月新用户的次留情况，按渠道分"
 
 **处理**:
-1. 读取知识库
+1. 读取 `knowledge/metrics/`、`knowledge/semantics/`
 2. 识别指标: 次日留存率
 3. 识别维度: 日期（注册日期）、渠道
 4. 识别时间: 最近一个月
@@ -302,7 +303,7 @@
 
 ### 1. 必须先读取知识库
 
-不能凭空猜测业务术语的含义，必须从知识库中查询。
+不能凭空猜测业务术语的含义，必须从知识库中查询。优先查 `knowledge/metrics/` 中的 `aliases` 字段识别指标，再查 `knowledge/semantics/` 中各类型的 `aliases` 字段识别实体/事件/维度。
 
 ### 2. 识别黑话
 
