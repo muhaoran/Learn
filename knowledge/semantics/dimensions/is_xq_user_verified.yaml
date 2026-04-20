@@ -1,0 +1,73 @@
+dimension_id: "is_xq_user_verified"
+name: "雪球用户是否已认证"
+entity: "xq_user"
+description: "判定雪球用户在指定日期是否拥有任一有效认证。由于认证拆表，完整口径需要同时覆盖旧表（flag=1 AND censor_status=1）与两张新表（status=1）；历史数据仍在旧表，新的个人/组织机构认证只写入新表"
+
+aliases:
+  - "是否已认证"
+  - "是否有认证"
+  - "认证用户"
+  - "verified user"
+
+named_values:
+  - value_id: "verified"
+    name: "已认证"
+    description: "任一认证来源存在有效记录即视为已认证：旧表需 flag=1 AND censor_status=1，两张新表需 status=1"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "三张认证表的分区日期"
+    sql_condition: |
+      xq_uid IN (
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_identity_info_s_trans
+        WHERE dt = ${target_date}
+          AND flag = 1
+          AND censor_status = 1
+        UNION ALL
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_verify_personal_s_trans
+        WHERE dt = ${target_date}
+          AND status = 1
+        UNION ALL
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_verify_organization_s_trans
+        WHERE dt = ${target_date}
+          AND status = 1
+      )
+    aliases:
+      - "有认证"
+      - "已完成认证"
+
+  - value_id: "not_verified"
+    name: "未认证"
+    description: "三张认证表在指定日期都不存在该 xq_uid 的有效记录"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "三张认证表的分区日期"
+    sql_condition: |
+      xq_uid NOT IN (
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_identity_info_s_trans
+        WHERE dt = ${target_date}
+          AND flag = 1
+          AND censor_status = 1
+        UNION ALL
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_verify_personal_s_trans
+        WHERE dt = ${target_date}
+          AND status = 1
+        UNION ALL
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_verify_organization_s_trans
+        WHERE dt = ${target_date}
+          AND status = 1
+      )
+    aliases:
+      - "无认证"
+      - "未完成认证"

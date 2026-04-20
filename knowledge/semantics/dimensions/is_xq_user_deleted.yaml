@@ -1,0 +1,49 @@
+dimension_id: "is_xq_user_deleted"
+name: "雪球用户是否已删除"
+entity: "xq_user"
+description: "用于区分雪球用户是否被删除。未删除用户在 xq_ods.ods_usnowball_user_s_trans，已删除用户归档在 fundx_ods.ods_xuc_userdelete_s_trans；业务上判断用户是否被删除需要跨这两张表"
+
+aliases:
+  - "是否已删除"
+  - "删除用户"
+  - "已删除用户"
+  - "alive user"
+
+named_values:
+  - value_id: "alive"
+    name: "未删除用户"
+    description: "指定分区日下仍保留在 xq_ods.ods_usnowball_user_s_trans 中的用户"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "观察日分区；业务默认取最新可用分区"
+    sql_condition: |
+      xq_uid IN (
+        SELECT user_id
+        FROM xq_ods.ods_usnowball_user_s_trans
+        WHERE dt = ${target_date}
+      )
+    aliases:
+      - "未删除用户"
+      - "活跃账号"
+
+  - value_id: "deleted"
+    name: "已删除用户"
+    description: "曾经存在但被删除的用户，记录归档在 fundx_ods.ods_xuc_userdelete_s_trans"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "观察日分区；业务默认取最新可用分区"
+    sql_condition: |
+      xq_uid IN (
+        SELECT user_id
+        FROM fundx_ods.ods_xuc_userdelete_s_trans
+        WHERE dt = ${target_date}
+      )
+    aliases:
+      - "删除用户"
+      - "注销用户"

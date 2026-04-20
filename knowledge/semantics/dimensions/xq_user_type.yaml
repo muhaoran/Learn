@@ -1,0 +1,32 @@
+dimension_id: "xq_user_type"
+name: "雪球用户类型"
+entity: "xq_user"
+description: "雪球社区用户的账号类型（普通/企业/机构/服务/匿名/基金经理/产品号/投顾管家）。挂在 xq_ods.ods_usnowball_user_s_trans 上"
+
+aliases:
+  - "用户类型"
+  - "账号类型"
+  - "雪球账号类型"
+  - "type"
+
+source_table: "xq_ods.ods_usnowball_user_s_trans"
+join_key: "user_id"
+sql_expr: "type"
+
+known_values:
+  - value: "1"
+    name: "普通账号"
+  - value: "2"
+    name: "企业号"
+  - value: "3"
+    name: "机构号"
+  - value: "4"
+    name: "服务号"
+  - value: "5"
+    name: "匿名用户"
+  - value: "6"
+    name: "基金经理号"
+  - value: "7"
+    name: "产品号"
+  - value: "8"
+    name: "投顾管家号"
