@@ -1,0 +1,29 @@
+table_id: "dwd_pat_xq_user_base_info"
+name: "雪球用户基础信息表"
+full_name: "xq_dwd.dwd_pat_xq_user_base_info_s"
+layer: DWD
+description: "雪球侧用户（xq_user）的基础信息宽表，用于社区数仓中的雪球用户画像与属性查询"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：原始资料（用户相关资料0420.md 1.1.1）仅给出表名，字段未列出；AI 生成 SQL 时不得引用本表的任何列，如需使用请先补全字段字典。"
+  - "属于雪球用户（xq_user）实体的基础信息锚表，与蛋卷用户（user）实体的 fundx_dwd.dwd_pat_user_info_s 区分，不可混用。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_user_s_trans"
+    join_field: "xq_uid / user_id"
+    join_type: "1:1"
+    purpose: "补充未删除状态下的原始用户属性"
+  - table: "fundx_dim.dim_pat_xq_dj_single_mapping_manual"
+    join_field: "xq_uid"
+    join_type: "1:1"
+    purpose: "通过手工维护映射获取对应的蛋卷用户 dj_uid"

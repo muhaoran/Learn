@@ -1,0 +1,26 @@
+table_id: "dm_lm_cu_djuser_label"
+name: "雪基用户标签表（dj_uid 维度）"
+full_name: "fundx_dm.dm_lm_cu_djuser_label"
+layer: DM
+description: "雪基用户（以蛋卷 dj_uid 为主体）的标签宽表，来源于社区数仓的用户标签体系"
+
+storage:
+  partition_field: null
+  update_frequency: "按需"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：原始资料（用户相关资料0420.md 1.1.2.1）仅给出表名与\"雪基用户标签\"注释，未列出字段；AI 生成 SQL 时不得引用本表的任何列，如需使用请先补全字段字典。"
+  - "分区字段待确认：原始资料未提及分区策略，如存在 dt 分区，使用时必须添加分区条件以防全表扫描，需由业务或数仓同学确认后补录。"
+  - "面向蛋卷 dj_uid 的用户标签；雪球 xq_uid 的标签请使用 xq_dws.dws_pat_xq_user_profile_s。"
+
+related_tables:
+  - table: "fundx_dwd.dwd_pat_user_info_s"
+    join_field: "dj_uid / uid"
+    join_type: "1:1"
+    purpose: "与蛋卷用户基础信息表关联补齐标签"

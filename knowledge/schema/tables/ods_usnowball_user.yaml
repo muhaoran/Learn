@@ -1,0 +1,74 @@
+table_id: "ods_usnowball_user"
+name: "雪球用户原始表（未删除）"
+full_name: "xq_ods.ods_usnowball_user_s_trans"
+layer: ODS
+description: "雪球社区用户（xq_user）的原始主档，仅包含未被删除的用户记录；已删除用户归档在 fundx_ods.ods_xuc_userdelete_s_trans"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - dt
+  - user_id
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "user_id"
+    type: "bigint"
+    description: "雪球用户 ID（xq_uid）"
+    nullable: false
+    is_partition: false
+
+  - name: "type"
+    type: "int"
+    description: "用户类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "普通账号"
+      - value: "2"
+        description: "企业号"
+      - value: "3"
+        description: "机构号"
+      - value: "4"
+        description: "服务号"
+      - value: "5"
+        description: "匿名用户"
+      - value: "6"
+        description: "基金经理号"
+      - value: "7"
+        description: "产品号"
+      - value: "8"
+        description: "投顾管家号"
+
+notes:
+  - "该表仅保留未删除用户；如需包含已删除用户，需 UNION fundx_ods.ods_xuc_userdelete_s_trans。"
+  - "用户类型枚举来自原始资料（用户相关资料0420.md 1.1.4）2025-02-10 的一次查询示例，如业务层后续扩充需同步更新。"
+  - "原始资料列出的字段仅包含 type；其他字段（昵称、注册时间等）待补全后再录入。"
+
+related_tables:
+  - table: "fundx_ods.ods_xuc_userdelete_s_trans"
+    join_field: "user_id / xq_uid"
+    join_type: "1:1"
+    purpose: "补齐已删除用户，做 UNION 以获得全量用户"
+  - table: "xq_ods.ods_usnowball_user_identity_info_s_trans"
+    join_field: "user_id"
+    join_type: "1:N"
+    purpose: "关联用户的多类认证记录（旧表，老数据与其他认证类型）"
+  - table: "xq_ods.ods_usnowball_user_verify_personal_s_trans"
+    join_field: "user_id"
+    join_type: "1:N"
+    purpose: "关联个人身份认证（新表）"
+  - table: "xq_ods.ods_usnowball_user_verify_organization_s_trans"
+    join_field: "user_id"
+    join_type: "1:N"
+    purpose: "关联组织机构认证（新表）"

@@ -1,0 +1,29 @@
+table_id: "dws_pat_xq_user_profile"
+name: "雪球用户画像标签表（xq_uid 维度）"
+full_name: "xq_dws.dws_pat_xq_user_profile_s"
+layer: DWS
+description: "雪球社区侧的用户画像/标签汇总表，主体为雪球用户（xq_uid）"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：原始资料（用户相关资料0420.md 1.1.2.2）仅给出表名与\"用户标签\"注释，未列出字段；AI 生成 SQL 时不得引用本表的任何列，如需使用请先补全字段字典。"
+  - "面向雪球 xq_uid 的用户标签；蛋卷 dj_uid 的标签请使用 fundx_dm.dm_lm_cu_djuser_label。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_user_s_trans"
+    join_field: "xq_uid / user_id"
+    join_type: "1:1"
+    purpose: "关联雪球用户原始信息"
+  - table: "fundx_dim.dim_pat_xq_dj_single_mapping_manual"
+    join_field: "xq_uid"
+    join_type: "1:1"
+    purpose: "通过手工维护映射把画像数据挂回 dj_uid"

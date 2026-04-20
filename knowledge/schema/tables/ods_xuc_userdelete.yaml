@@ -1,0 +1,25 @@
+table_id: "ods_xuc_userdelete"
+name: "已删除雪球用户表"
+full_name: "fundx_ods.ods_xuc_userdelete_s_trans"
+layer: ODS
+description: "存放已被删除的雪球用户（xq_user）记录，用于补齐 xq_ods.ods_usnowball_user_s_trans 中已被剔除的用户"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：原始资料（用户相关资料0420.md 1.1.1）仅给出表名，未列字段；AI 生成 SQL 时不得引用本表的任何列，如需使用请先补全字段字典。"
+  - "典型用法：与 xq_ods.ods_usnowball_user_s_trans UNION 以获得含已删除用户的全量用户清单。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_user_s_trans"
+    join_field: "user_id / xq_uid"
+    join_type: "1:1"
+    purpose: "与未删除用户表 UNION 获得全量用户清单"

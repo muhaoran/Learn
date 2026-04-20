@@ -1,0 +1,55 @@
+table_id: "ods_usnowball_user_verify_personal"
+name: "雪球个人身份认证表（新）"
+full_name: "xq_ods.ods_usnowball_user_verify_personal_s_trans"
+layer: ODS
+description: "雪球用户个人身份认证的新表；拆表之后个人身份认证只写入该表，老数据仍在旧表 ods_usnowball_user_identity_info_s_trans 中"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "拆表后至今"
+  retention: "永久保留"
+
+primary_key: []
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "user_id"
+    type: "bigint"
+    description: "雪球用户 ID（xq_uid）"
+    nullable: true
+    is_partition: false
+
+  - name: "status"
+    type: "int"
+    description: "认证状态，业务使用时过滤 status = 1"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "认证通过"
+
+notes:
+  - "新表：拆表后个人身份认证记录仅写入本表；老数据仍在 ods_usnowball_user_identity_info_s_trans。"
+  - "有效认证口径：status = 1。"
+  - "其他字段（证件号、姓名、认证时间等）暂未在原始资料中给出；使用具体业务字段前需补全字段字典。"
+  - "统计用户认证总貌时建议与旧表和组织机构认证新表做 UNION。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_user_identity_info_s_trans"
+    join_field: "user_id"
+    join_type: "1:1"
+    purpose: "个人身份认证的历史数据仍在旧表中，做 UNION 或分时间段切换"
+  - table: "xq_ods.ods_usnowball_user_verify_organization_s_trans"
+    join_field: "user_id"
+    join_type: "1:1"
+    purpose: "与组织机构认证配对形成完整的身份认证记录"
+  - table: "xq_ods.ods_usnowball_user_s_trans"
+    join_field: "user_id"
+    join_type: "N:1"
+    purpose: "关联雪球用户主档"

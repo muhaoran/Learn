@@ -46,6 +46,7 @@ columns:
 notes:
   - "强关系口径：source='dj'，cast(open_id as bigint) 作为 dj_uid"
   - "一对一强关系外，仍存在多对多映射场景，需结合 dwd_pat_xq_dj_uidjoin_s"
+  - "另一种 1:1 强关系来源是 fundx_dim.dim_pat_xq_dj_single_mapping_manual（人工维护），两者互为补充；查询时按业务口径选择其一或做 UNION 去重"
   - "dwd_pat_xq_dj_uidjoin_s 在 PDF 中仅出现表名，字段待补充"
 
 related_tables:
@@ -53,3 +54,7 @@ related_tables:
     join_field: "dj_uid/xq_uid"
     join_type: "N:N"
     purpose: "平台-蛋卷多对多ID映射补充"
+  - table: "fundx_dim.dim_pat_xq_dj_single_mapping_manual"
+    join_field: "dj_uid/xq_uid"
+    join_type: "1:1"
+    purpose: "手工维护的 1:1 映射表，与 UC 映射互为补充"

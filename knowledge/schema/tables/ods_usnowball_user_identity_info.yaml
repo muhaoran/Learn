@@ -1,0 +1,93 @@
+table_id: "ods_usnowball_user_identity_info"
+name: "雪球用户认证信息表（旧）"
+full_name: "xq_ods.ods_usnowball_user_identity_info_s_trans"
+layer: ODS
+description: "雪球用户的认证记录明细表（旧表）。历史上所有认证都写在这里；目前仅保留老数据以及其他类型认证（非个人身份/非组织机构认证）正常写入"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "user_id"
+    type: "bigint"
+    description: "雪球用户 ID（xq_uid）"
+    nullable: false
+    is_partition: false
+
+  - name: "auth_type"
+    type: "int"
+    description: "认证类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "身份认证"
+      - value: "2"
+        description: "自媒体认证（旧值）"
+      - value: "3"
+        description: "达人认证"
+      - value: "4"
+        description: "公司机构认证"
+      - value: "5"
+        description: "实名认证"
+      - value: "6"
+        description: "实盘认证"
+      - value: "7"
+        description: "雪球公司认证"
+      - value: "8"
+        description: "自媒体认证"
+      - value: "9"
+        description: "精选企业认证"
+      - value: "10"
+        description: "荣誉认证"
+      - value: "11"
+        description: "国家网络身份认证"
+
+  - name: "flag"
+    type: "int"
+    description: "有效标志，业务使用时需过滤 flag = 1"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "有效"
+
+  - name: "censor_status"
+    type: "int"
+    description: "审核状态，业务使用时需过滤 censor_status = 1"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "1"
+        description: "审核通过"
+
+notes:
+  - "旧表：历史以来的所有认证类型均写在此表；自个人身份认证 / 组织机构认证拆分到新表后，老数据仍在本表，新数据中这两类不再写入本表，其他认证类型依然写入本表。"
+  - "有效认证必须同时满足 flag = 1 AND censor_status = 1。"
+  - "统计用户认证总貌时，建议与 ods_usnowball_user_verify_personal_s_trans、ods_usnowball_user_verify_organization_s_trans 做 UNION（或按认证类型拼装）。"
+  - "除枚举字段外其余字段（证件号、认证名称等）未在原始资料中给出，暂未录入。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_user_s_trans"
+    join_field: "user_id"
+    join_type: "N:1"
+    purpose: "关联雪球用户主档获取用户类型"
+  - table: "xq_ods.ods_usnowball_user_verify_personal_s_trans"
+    join_field: "user_id"
+    join_type: "1:1"
+    purpose: "与个人身份认证新表合并口径"
+  - table: "xq_ods.ods_usnowball_user_verify_organization_s_trans"
+    join_field: "user_id"
+    join_type: "1:1"
+    purpose: "与组织机构认证新表合并口径"
