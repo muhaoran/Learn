@@ -15,6 +15,7 @@ primary_key: []
 columns: []
 
 notes:
+  - "字段定义待补充：columns 与 primary_key 为空，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
   - "列信息待补充：该表在 PDF 中仅通过 SELECT * 方式出现，具体字段需从实际数据补充"
   - "该表为企微原始标签，句子+企微合并标签（推荐）见 fundx_dwd.dwd_pat_juzi_mhlabel_record_s"
   - "句子老标签见 fundx_dwd.dwd_pat_juzi_v2_customer_detail_s"

@@ -1,6 +1,6 @@
 pattern_id: "cohort_retention"
 name: "同期群留存"
-description: "计算某日进入的一批用户（同期群），在之后第 N 天仍然活跃的比例，是 D1/D7/D30 留存率的通用计算模式"
+description: '计算某日触发"基准事件"的一批实体（同期群），在之后第 N 天再次发生"留存事件"的比例，是各类 N 日留存率的通用计算模式（基准事件常为注册/首购，留存事件常为活跃/复购）'
 
 parameters:
   entity:
@@ -21,7 +21,7 @@ parameters:
   retain_where_dimension_values:
     type: "list<{dimension_id: Dimension, value: string}>"
     required: false
-    description: "留存判断的维度字段具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+    description: "留存判断的维度字段具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: <dimension_id>, value: '<value>'}]"
 
   retain_where_named_values:
     type: "Dimension.NamedValue[]"
@@ -31,7 +31,7 @@ parameters:
   cohort_date:
     type: date_expr
     required: true
-    description: "同期群的基准日期，如 register_date = '2024-01-01'"
+    description: "同期群的基准日期，如 `<cohort_date_field> = '2024-01-01'`"
 
   offset_days:
     type: integer
@@ -56,7 +56,7 @@ sql_template: |
   retained AS (
     -- 留存用户：在 cohort_date + offset_days 这天仍然活跃
     SELECT DISTINCT ${entity.primary_key}
-    FROM ${retain_event.source_table OR entity.anchor_table}
+    FROM ${retain_event.source_table OR entity.anchor_tables[<anchor_key>]}
     ${LEFT JOIN dim.source_table ON dim.join_key}               -- retain_where_dimension_values 需要时展开
     WHERE ${AND retain_event.type_condition}
       ${AND retain_where_dimension_values.sql_expr = value, ...}
@@ -77,57 +77,64 @@ sql_template: |
   ${GROUP BY group_by.expr, ...}
 
 example_usage:
-  - description: "计算 2024-01-01 新增用户的次日（D1）留存率"
+  # ── 占位示例（说明展开规则；实际使用时把 <cohort_table>/<retain_table>/<entity_pk> 替换为真实表/字段） ──
+  - description: "占位骨架：D{N} 留存率"
     parameters:
-      entity: "user"
-      cohort_event: "registration"
-      retain_event: "active_behavior"                           # Event → FROM dwd_user_behavior，无 type_condition
-      cohort_date: "register_date = '2024-01-01'"
-      offset_days: 1
+      entity: "<entity_id>"                       # → primary_key = <entity_pk>
+      cohort_event: "<cohort_event_id>"           # → FROM <cohort_table>，date_field = <cohort_date_field>
+      retain_event: "<retain_event_id>"           # → FROM <retain_table>，date 字段 = <retain_date_field>
+      cohort_date:  "<cohort_date_field> = '<base_date>'"
+      offset_days:  1
     generated_sql: |
       WITH cohort AS (
-        SELECT user_id, register_date AS cohort_date
-        FROM dwd_user_register
-        WHERE register_date = '2024-01-01'
+        SELECT <entity_pk>, <cohort_date_field> AS cohort_date
+        FROM <cohort_table>
+        WHERE <cohort_date_field> = '<base_date>'
       ),
       retained AS (
-        SELECT DISTINCT user_id
-        FROM dwd_user_behavior
-        WHERE date = date_add('day', 1, DATE '2024-01-01')
+        SELECT DISTINCT <entity_pk>
+        FROM <retain_table>
+        WHERE <retain_date_field> = date_add('day', 1, DATE '<base_date>')
+          [AND <retain_event.type_condition>]
       )
       SELECT
-        COUNT(DISTINCT c.user_id)                                         AS cohort_size,
-        COUNT(DISTINCT r.user_id)                                         AS retained_count,
-        COUNT(DISTINCT r.user_id) * 1.0
-          / NULLIF(COUNT(DISTINCT c.user_id), 0)                         AS retention_rate
+        COUNT(DISTINCT c.<entity_pk>)                                AS cohort_size,
+        COUNT(DISTINCT r.<entity_pk>)                                AS retained_count,
+        COUNT(DISTINCT r.<entity_pk>) * 1.0
+          / NULLIF(COUNT(DISTINCT c.<entity_pk>), 0)                 AS retention_rate
       FROM cohort c
-      LEFT JOIN retained r ON c.user_id = r.user_id
+      LEFT JOIN retained r ON c.<entity_pk> = r.<entity_pk>
 
-  - description: "按注册渠道分组，计算 D7 留存率"
+  - description: "占位骨架：按某维度分组的 D{N} 留存率"
     parameters:
-      entity: "user"
-      cohort_event: "registration"
-      retain_event: "active_behavior"
-      cohort_date: "register_date = '2024-01-01'"
-      offset_days: 7
-      group_by: ["user_register_channel"]
+      entity: "<entity_id>"
+      cohort_event: "<cohort_event_id>"
+      retain_event: "<retain_event_id>"
+      cohort_date:  "<cohort_date_field> = '<base_date>'"
+      offset_days:  7
+      group_by:     ["<dimension_id>"]            # 维度字段 <dim_field> 来自 <cohort_table>
     generated_sql: |
       WITH cohort AS (
-        SELECT user_id, register_date AS cohort_date, register_channel
-        FROM dwd_user_register
-        WHERE register_date = '2024-01-01'
+        SELECT <entity_pk>, <cohort_date_field> AS cohort_date, <dim_field>
+        FROM <cohort_table>
+        WHERE <cohort_date_field> = '<base_date>'
       ),
       retained AS (
-        SELECT DISTINCT user_id
-        FROM dwd_user_behavior
-        WHERE date = date_add('day', 7, DATE '2024-01-01')
+        SELECT DISTINCT <entity_pk>
+        FROM <retain_table>
+        WHERE <retain_date_field> = date_add('day', 7, DATE '<base_date>')
       )
       SELECT
-        c.register_channel,
-        COUNT(DISTINCT c.user_id)                                         AS cohort_size,
-        COUNT(DISTINCT r.user_id)                                         AS retained_count,
-        COUNT(DISTINCT r.user_id) * 1.0
-          / NULLIF(COUNT(DISTINCT c.user_id), 0)                         AS retention_rate
+        c.<dim_field>,
+        COUNT(DISTINCT c.<entity_pk>)                                AS cohort_size,
+        COUNT(DISTINCT r.<entity_pk>)                                AS retained_count,
+        COUNT(DISTINCT r.<entity_pk>) * 1.0
+          / NULLIF(COUNT(DISTINCT c.<entity_pk>), 0)                 AS retention_rate
       FROM cohort c
-      LEFT JOIN retained r ON c.user_id = r.user_id
-      GROUP BY c.register_channel
+      LEFT JOIN retained r ON c.<entity_pk> = r.<entity_pk>
+      GROUP BY c.<dim_field>
+
+notes:
+  - "cohort_event 与 retain_event 可以相同（如复购留存），也可以不同（如注册→活跃）"
+  - "若 retain_event 与 cohort_event 同表，需注意去重逻辑"
+  - "group_by 维度字段必须能在 cohort 子查询的来源表中拿到，否则需要在 cohort CTE 中先 JOIN 维度表"

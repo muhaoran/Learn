@@ -1,0 +1,29 @@
+table_id: "dwd_pat_xq_dj_uidjoin"
+name: "雪球-蛋卷 UID 映射表"
+full_name: "fundx_dwd.dwd_pat_xq_dj_uidjoin_s"
+layer: DWD
+description: "维护雪球用户 ID（xq_uid）与蛋卷用户 ID（dj_uid）的对应关系。业务上这是多对多映射，与 ods_usnowball_oauthuser_s_trans（source='dj' 的 1:1 UC 强关系）形成互补"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：PDF 中仅出现表名（3.2.1 dj_uid 和 xq_uid 的关系），预计字段包含 dj_uid / xq_uid 等，具体命名与类型待确认，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
+  - "该表为多对多映射；如果业务场景需要 1:1 强关系，优先使用 xq_ods.ods_usnowball_oauthuser_s_trans 中 source='dj' 的记录。"
+
+related_tables:
+  - table: "xq_ods.ods_usnowball_oauthuser_s_trans"
+    join_field: "dj_uid / xq_uid"
+    join_type: "N:N"
+    purpose: "与 UC 侧 1:1 强关系表互相补充"
+  - table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+    join_field: "dj_uid=uid"
+    join_type: "N:1"
+    purpose: "补齐持仓用户的 xq_uid"

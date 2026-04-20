@@ -26,6 +26,8 @@ Layer C  patterns/     计算模式   ——  可复用的参数化 SQL 模板�
 Layer D  metrics/      指标目录   ——  有名字的指标 = Pattern + 语义参数（指标层）
 ```
 
+> Layer A/B/C/D 仅为**文字助记**，按"物理 → 语义 → 逻辑 → 指标"的抽象层级升序；与 AI 查询顺序（D → C → B → A）正好相反，互不冲突。
+
 > 详细设计见 `design_philosophy/02_composable_knowledge_architecture.md`
 
 **AI 生成 SQL 的检索顺序**：
@@ -46,29 +48,23 @@ Layer D  metrics/      指标目录   ——  有名字的指标 = Pattern + 语
 │
 ├── knowledge/                   # 结构化知识库（核心）
 │   ├── schema/                  # Layer A: 数据字典
-│   │   ├── tables/              # 各表 YAML 定义
+│   │   ├── tables/              # 各表 YAML 定义（按真实业务表名命名）
 │   │   ├── TEMPLATE.yaml
 │   │   ├── trino_syntax.md      # Trino 语法参考
 │   │   └── README.md
 │   ├── semantics/               # Layer B: 业务语义
 │   │   ├── templates/           # 各类语义文件的模板（新增定义时从这里复制）
-│   │   ├── entities/            # 实体（用户、帖子…）
-│   │   ├── events/              # 业务过程（注册、活跃…）
-│   │   ├── dimensions/          # 维度（实体属性 + 计算属性分群）
+│   │   ├── entities/            # 实体定义
+│   │   ├── events/              # 业务过程定义
+│   │   ├── dimensions/          # 维度定义（实体属性 + 计算属性）
 │   │   └── README.md
 │   ├── patterns/                # Layer C: 计算模式
-│   │   ├── count_distinct.yaml
-│   │   ├── cohort_retention.yaml
-│   │   ├── sum_metric.yaml
+│   │   ├── count_distinct.yaml  # 去重计数
+│   │   ├── cohort_retention.yaml # 同期群留存
+│   │   ├── sum_metric.yaml      # 求和类指标
 │   │   ├── TEMPLATE.yaml
 │   │   └── README.md
 │   ├── metrics/                 # Layer D: 指标目录
-│   │   ├── dau.yaml
-│   │   ├── mau.yaml
-│   │   ├── new_user_count.yaml
-│   │   ├── d1_retention_rate.yaml
-│   │   ├── d7_retention_rate.yaml
-│   │   ├── post_user_count.yaml
 │   │   ├── TEMPLATE.yaml
 │   │   └── README.md
 │   └── README.md
@@ -88,9 +84,7 @@ Layer D  metrics/      指标目录   ——  有名字的指标 = Pattern + 语
 │   └── 07_raw_knowledge_processing.md
 │
 ├── design_philosophy/           # 设计哲学文档
-├── docs/                        # 系统文档（架构、实施指南等）
-├── feedback/                    # 反馈收集（纠错、知识缺口）
-└── tests/                       # 测试用例
+└── feedback/                    # 反馈收集（纠错、知识缺口、新案例）
 ```
 
 ---
@@ -115,48 +109,26 @@ Layer D  metrics/      指标目录   ——  有名字的指标 = Pattern + 语
 
 ---
 
-## 快速示例
+## 基本用法
 
-### 示例 1：简单查询
+### 直接提需求
 
-**用户**：查询昨天的 DAU
+向 AI 用自然语言描述要查询的指标，AI 会基于 `knowledge/` 中已登记的指标、模式、语义和表结构生成 Trino SQL。
 
-**AI 处理**：
-- 匹配 `metrics/dau.yaml` → 使用 `count_distinct` pattern
-- 语义参数展开：`subject=active_user`（活跃用户定义）、`anchor=dws_user_daily`
-- 分区条件：`date = date_add('day', -1, current_date)`
+一个完整的需求建议包含四要素：
 
-```sql
--- DAU：昨天的日活跃用户数
-SELECT
-    date,
-    COUNT(DISTINCT user_id) AS dau
-FROM dws_user_daily
-WHERE date = date_add('day', -1, current_date)
-  AND is_active = 1
-GROUP BY date
-```
+| 要素 | 说明 |
+|------|------|
+| **指标** | 查什么（已登记指标的名字或别名） |
+| **时间** | 什么时间段（具体日期、最近 N 天、某月份等） |
+| **维度** | 如何分组（按某业务维度，如已定义的维度名） |
+| **筛选** | 是否限定特定子集（特定分群、特定状态等） |
 
-### 示例 2：需要澄清的查询
+如果需求模糊，AI 会主动澄清，给出可选项让你选择。
 
-**用户**：帮我看下新用户的留存
+### 处理原始资料（推荐入门方式）
 
-**AI 澄清**：
-1. 时间范围？最近 30 天 / 本月 / 上月 / 其他
-2. 留存类型？次日留存（D1）/ 7 日留存（D7）/ 留存曲线
-3. 是否分维度？按注册渠道 / 按日期 / 仅看整体
-
-**用户**：最近 30 天，D1，按日期
-
-**AI** 匹配 `metrics/d1_retention_rate.yaml` → `cohort_retention` pattern → 生成 SQL
-
----
-
-## 知识库扩充
-
-### 处理原始资料（最简单的方式）
-
-1. 将原始文档（Word、Excel、SQL 文件、截图描述等）放入 `raw_knowledge/mixed/`
+1. 把原始文档（Word、Excel、SQL 文件、需求文档等）放入 `raw_knowledge/mixed/`
 2. 告诉 AI："请处理 raw_knowledge/mixed/xxx"
 3. AI 自动解析并写入对应的四层目录
 
@@ -166,10 +138,10 @@ GROUP BY date
 
 | 要补充的内容 | 目标位置 |
 |-------------|----------|
-| 新的数据表 | `knowledge/schema/tables/新表名.yaml` |
+| 新的数据表 | `knowledge/schema/tables/{表名}.yaml` |
 | 新的业务实体/事件/维度 | `knowledge/semantics/`（模板在 `semantics/templates/`） |
-| 新的计算逻辑 | `knowledge/patterns/新模式.yaml` |
-| 新的指标 | `knowledge/metrics/新指标.yaml` |
+| 新的计算逻辑 | `knowledge/patterns/{模式名}.yaml` |
+| 新的指标 | `knowledge/metrics/{指标名}.yaml` |
 
 语义层（entities/events/dimensions）的模板统一在 `knowledge/semantics/templates/`；其他层各目录内有 `TEMPLATE.yaml` 可参考。
 
@@ -177,7 +149,7 @@ GROUP BY date
 
 ## AI 行为规范
 
-- 所有 SQL 使用 **Trino 语法**（禁止 MySQL / Hive / Presto 语法）
+- 所有 SQL 使用 **Trino 语法**（禁止 MySQL / Hive 专属语法；Trino 与 PrestoSQL 兼容，但遇 PrestoDB 专属函数时以 Trino 文档为准）
 - 优先使用汇总表（ADS > DWS > DWD > ODS）
 - WHERE 条件必须包含分区字段
 - 不能使用知识库之外的表或字段
@@ -194,5 +166,4 @@ GROUP BY date
 | `GETTING_STARTED.md` | 面向使用者的操作指南 |
 | `knowledge/README.md` | 知识库整体说明 |
 | `design_philosophy/02_composable_knowledge_architecture.md` | 四层架构设计详解 |
-| `docs/architecture.md` | 系统架构设计 |
-| `docs/implementation_guide.md` | 实施指南 |
+| `design_philosophy/03_cursorrules_design.md` | AI 行为规范设计依据 |

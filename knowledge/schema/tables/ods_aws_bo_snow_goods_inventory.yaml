@@ -1,0 +1,43 @@
+table_id: "ods_aws_bo_snow_goods_inventory"
+name: "邮寄系统物品库存/价格表"
+full_name: "xq_ods.ods_aws_bo_snow_goods_inventory_s_trans"
+layer: ODS
+description: "邮寄系统的物品库存与价格信息，支持按 SKU 查询单价、物品名称，用于礼品邮寄相关的成本与库存分析"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - sku
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+
+  - name: "sku"
+    type: "varchar"
+    description: "物品 SKU（唯一识别号）"
+    nullable: false
+    is_partition: false
+
+  - name: "goodsname"
+    type: "varchar"
+    description: "物品名称"
+    nullable: true
+    is_partition: false
+
+  - name: "unit_price"
+    type: "decimal"
+    description: "单价（元）"
+    nullable: true
+    is_partition: false
+
+notes:
+  - "字段定义部分待补充：PDF 中仅显式使用 sku / goodsname / unit_price；其他字段（库存、上下架状态等）待补齐。"
+  - "PDF 示例查询为 dt = date_sub(current_date(),1)，实际 Trino 写法应为 dt = date_add('day', -1, current_date)。"

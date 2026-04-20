@@ -1,0 +1,17 @@
+event_id: "first_fund_purchase"
+name: "公募首购"
+entity: "user"
+description: "用户人生第一笔公募买入。优先使用 DWS 首购汇总表，避免在父单明细中重复计算。三分法首购需要在父单中单独限定 invest_account_code='TRICHOTOMY' 后取 row_number=1"
+
+source_table: "fundx_dws.dws_evt_parent_money_first_trade_s"
+
+# 首购日期字段名待补充（该表 columns 尚未录入）；在未补充字段前，date_field 留空不会影响 count_distinct / sum_metric 的基本使用
+date_field: ""
+
+aliases:
+  - "首购"
+  - "首次购买"
+  - "首投"
+  - "首次下单"
+
+# 注意：此事件对应的 source_table 字段定义待补充，引用时请先检查并补齐

@@ -1,0 +1,26 @@
+metric_id: "trichotomy_transfer_in_success_user_count"
+name: "三分法迁入成功人数"
+description: "在指定时间范围内，发起三分法迁入且迁入状态为 success 的去重用户数"
+
+pattern: "count_distinct"
+
+pattern_params:
+  entity: "user"
+  event: "trichotomy_transfer_in"
+
+  time_window: "dt = ${target_date}"
+
+  where_dimension_values:
+    - dimension_id: transfer_status
+      value: "success"
+
+aliases:
+  - "迁入成功人数"
+  - "三分法迁入成功人数"
+  - "三分法迁入成功用户数"
+  - "成功迁入三分法人数"
+
+notes:
+  - "迁入≠买入：本指标不计入通过买单直接进入三分法的用户"
+  - "口径依赖 ods_fuser_user_invest_account_s_trans.account_code='TRICHOTOMY'，account 清洗表字段变更时需同步复核"
+  - "create_time 为 timestamp，按业务日统计时可额外限制 substr(cast(create_time as varchar),1,10) 落在目标日"

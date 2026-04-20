@@ -1,0 +1,27 @@
+dimension_id: "product_type_code"
+name: "产品类型代码"
+entity: "fund_product"
+description: "基金产品的顶层类型代码（现金宝/养老金/公募单品/组合/投顾/有知有行）"
+
+aliases:
+  - "pro_type"
+  - "产品类型代码"
+  - "产品大类"
+
+source_table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+join_key: "pro_code"
+sql_expr: "pro_type"
+
+known_values:
+  - value: "XJB"
+    name: "现金宝"
+  - value: "Y"
+    name: "养老金"
+  - value: "F"
+    name: "公募单品"
+  - value: "ZH"
+    name: "组合"
+  - value: "TG"
+    name: "投顾"
+  - value: "YZ"
+    name: "有知有行"

@@ -3,23 +3,23 @@
 # 维度是实体的属性，值必须是有限离散的分类值，用于 GROUP BY 或 WHERE 过滤
 #
 # 两种业务场景二选一：
-#   实体属性：实体本身具备这个属性，值可从表中直接读取或计算（渠道、平台、新老用户类型）
+#   实体属性：实体本身具备这个属性，值可从表中直接读取或计算
 #             → 填 source_table + join_key + sql_expr，用 known_values 记录枚举含义
-#   计算属性：业务定义的属性，值无法从字段直接读取，需通过行为或关联数据计算（活跃状态、首购状态）
+#   计算属性：业务定义的属性，值无法从字段直接读取，需通过行为或关联数据计算
 #             → 不填 sql_expr，用 named_values 的自包含子查询定义每个取值的归属条件
 
-dimension_id: "your_dimension_id"
-name: "中文名"
-entity: "user"                       # 对应 entities/ 中的 entity_id
+dimension_id: "<dimension_id>"
+name: "<中文名>"
+entity: "<entity_id>"                 # 对应 entities/ 中的 entity_id
 description: ""
 
 aliases:
   - ""
 
 # ── 实体属性 ─────────────────────────────────────────────────────────
-source_table: "schema.table_name"
-join_key: "user_id"
-sql_expr: "channel"                  # 字段名或 CASE WHEN ... END
+source_table: "<schema>.<table_name>"
+join_key: "<join_key_field>"
+sql_expr: "<field_or_case_when_expression>"
 
 known_values:                        # 可选：记录枚举值的业务含义
   - value: ""
@@ -31,12 +31,12 @@ named_values:
     name: ""
     description: ""
     depends_on_events:
-      - event_id
+      - <event_id>
     parameters:
-      n:
+      <param_name>:
         type: integer
         default: 30
         description: ""
-    sql_condition: ""                 # 自包含子查询，如 "user_id IN (SELECT ...)"
+    sql_condition: ""                 # 自包含子查询，如 "<entity.primary_key> IN (SELECT ...)"
     aliases:
       - ""

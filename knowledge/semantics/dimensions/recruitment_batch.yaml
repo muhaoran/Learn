@@ -1,0 +1,70 @@
+dimension_id: "recruitment_batch"
+name: "招募期次"
+entity: "private_domain_user"
+description: "私域用户所属的基金第一课招募期次。来自句子标签，按 group_name 区分'历史用户模式'和'基金第一课招募用户(总)'，label_name 为 8 位字符时取为期次号，最终拼接前缀区分历史/新招"
+
+aliases:
+  - "期次"
+  - "招募期次"
+  - "batch_name"
+  - "基金第一课期次"
+  - "历史用户期次"
+  - "新招期次"
+
+# 计算属性：值需要子查询归属
+named_values:
+  - value_id: "historical_user"
+    name: "历史用户"
+    description: "group_name='历史用户模式' 的用户，期次以 '历史-' 前缀拼接 label_name"
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "标签表分区日期"
+    sql_condition: |
+      wechat_union_id IN (
+        SELECT wechat_union_id
+        FROM (
+          SELECT
+            wechat_union_id
+            , ROW_NUMBER() OVER (PARTITION BY wechat_union_id ORDER BY first_label_date DESC) AS f_rank
+          FROM fundx_dwd.dwd_pat_juzi_mhlabel_record_s
+          WHERE dt = ${target_date}
+            AND group_name = '历史用户模式'
+            AND wechat_union_id IS NOT NULL
+            AND LENGTH(label_name) = 8
+        ) t
+        WHERE f_rank = 1
+      )
+    aliases:
+      - "历史用户"
+      - "老用户"
+      - "历史用户模式"
+
+  - value_id: "new_recruit_user"
+    name: "新招用户"
+    description: "group_name='基金第一课招募用户(总)' 的用户，期次以 '新招-' 前缀拼接 label_name"
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "标签表分区日期"
+    sql_condition: |
+      wechat_union_id IN (
+        SELECT wechat_union_id
+        FROM (
+          SELECT
+            wechat_union_id
+            , ROW_NUMBER() OVER (PARTITION BY wechat_union_id ORDER BY first_label_date DESC) AS f_rank
+          FROM fundx_dwd.dwd_pat_juzi_mhlabel_record_s
+          WHERE dt = ${target_date}
+            AND group_name = '基金第一课招募用户(总)'
+            AND wechat_union_id IS NOT NULL
+            AND LENGTH(label_name) = 8
+        ) t
+        WHERE f_rank = 1
+      )
+    aliases:
+      - "新招用户"
+      - "新用户"
+      - "基金第一课招募用户"

@@ -1,6 +1,6 @@
 pattern_id: "sum_metric"
 name: "求和类指标"
-description: "对某个数值字段求和，如总发帖数、总评论数、总时长等"
+description: "对某个数值字段求和，如总交易额、总持仓金额、总时长等（含滚动窗口口径）"
 
 parameters:
   sum_field:
@@ -21,12 +21,12 @@ parameters:
   anchor_table:
     type: "string（entity.anchor_tables 的 key）"
     required: false
-    description: "指定使用 entity.anchor_tables 中的哪张锚表作为 FROM 来源；如 'holding' 对应 user.anchor_tables.holding"
+    description: "指定使用 entity.anchor_tables 中的哪张锚表作为 FROM 来源；如实体 <entity_id> 的 anchor_tables.<anchor_key>"
 
   where_dimension_values:
     type: "list<{dimension_id: Dimension, value: string}>"
     required: false
-    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: <dimension_id>, value: '<value>'}]"
 
   where_named_values:
     type: "Dimension.NamedValue[]"
@@ -59,32 +59,54 @@ sql_template: |
   ${GROUP BY group_by.expr, ...}
 
 example_usage:
-  - description: "统计2024年1月、来自邀请注册渠道的用户公募买入总金额，按投资账户类型分组"
+  # ── 占位示例（说明展开规则；事件型 / 快照型两种用法） ─────────────
+  - description: "占位骨架：事件型（基于 event 推导来源表）"
+    parameters:
+      sum_field: "<numeric_field>"
+      event:     "<event_id>"                # → FROM <event_table> [WHERE <event.type_condition>]
+      time_window: "<partition_field> = '<date>'"
+    generated_sql: |
+      SELECT
+        SUM(<numeric_field>) AS total
+      FROM <event_table>
+      WHERE <partition_field> = '<date>'
+        [AND <event.type_condition>]
+
+  - description: "占位骨架：快照型（基于 entity.anchor_tables 推导来源表）"
+    parameters:
+      sum_field: "<numeric_field>"
+      entity:    "<entity_id>"
+      anchor_table: "<anchor_key>"           # → entity.anchor_tables[<anchor_key>] = <snapshot_table>
+      time_window: "<partition_field> = '<date>'"
+    generated_sql: |
+      SELECT
+        SUM(<numeric_field>) AS total
+      FROM <snapshot_table>
+      WHERE <partition_field> = '<date>'
+
+  # ── 真实业务表示例 ──────────────────────────────────────────────
+  - description: "统计 2024 年 1 月公募主动买入总金额，按子账户类型分组"
     parameters:
       sum_field: "init_amount"
-      event: "fund_purchase"      # type_condition: is_private = 0 AND trade_mode IN (1,2,3,4,5)
-      where_dimension_values:
-        user_register_channel: "invite"   # 需 LEFT JOIN dwd_user_register ON uid = user_id
+      event: "fund_purchase"                 # type_condition: is_private = 0 AND trade_mode IN (1,2,3,4,5)
       group_by:
-        - holding_invest_account          # sql_expr: invest_account_code（字段已在 source_table 中）
+        - holding_invest_account             # sql_expr: invest_account_code（字段已在 source_table 中）
       time_window: "dt BETWEEN date '2024-01-01' AND date '2024-01-31'"
     generated_sql: |
       SELECT
-        o.invest_account_code,
-        SUM(o.init_amount) AS total
-      FROM fundx_dwd.dwd_evt_parent_money_order_s o
-      LEFT JOIN dwd_user_register r ON o.uid = r.user_id
-      WHERE o.dt BETWEEN date '2024-01-01' AND date '2024-01-31'
-        AND o.is_private = 0
-        AND o.trade_mode IN (1,2,3,4,5)
-        AND r.register_channel = 'invite'
-      GROUP BY o.invest_account_code
+        invest_account_code,
+        SUM(init_amount) AS total
+      FROM fundx_dwd.dwd_evt_parent_money_order_s
+      WHERE dt BETWEEN date '2024-01-01' AND date '2024-01-31'
+        AND is_private = 0
+        AND trade_mode IN (1,2,3,4,5)
+      GROUP BY invest_account_code
 
   - description: "统计某天三分法子账户的持仓总金额（快照型，无 event）"
     parameters:
       sum_field: "amount"
       entity: "user"
-      anchor_table: "holding"     # → user.anchor_tables.holding = dwd_ast_pub_daily_holding_detail_i
+      anchor_table: "holding"                # → user.anchor_tables.holding = dwd_ast_pub_daily_holding_detail_i
       where_dimension_values:
         - dimension_id: holding_invest_account
           value: "TRICHOTOMY"
@@ -92,6 +114,6 @@ example_usage:
     generated_sql: |
       SELECT
         SUM(amount) AS total
-      FROM dwd_ast_pub_daily_holding_detail_i
+      FROM fundx_dwd.dwd_ast_pub_daily_holding_detail_i
       WHERE dt = '2024-01-01'
         AND invest_account_code = 'TRICHOTOMY'

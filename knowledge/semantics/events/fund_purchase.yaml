@@ -1,13 +1,21 @@
 event_id: "fund_purchase"
-name: "公募买入"
+name: "公募主动买入"
 entity: "user"
-description: "用户在公募业务中的买入行为，口径为父单中的主动买入交易"
+description: "用户主动发起的公募买入行为（父单级）。默认口径限定在主动认购/申购/定投/转换类交易（trade_mode IN (1,2,3,4,5)），不包含赎回、卖出和被动迁入"
 
 source_table: "fundx_dwd.dwd_evt_parent_money_order_s"
+
+# 通过 is_private=0 限定公募，通过 trade_mode 限定主动买入
 type_condition: "is_private = 0 AND trade_mode IN (1,2,3,4,5)"
 
+# 下单日期来自 init_time，而非分区字段 dt
+date_field: "substr(init_time,1,10)"
+
 aliases:
-  - "公募买入"
-  - "基金买入"
+  - "买入"
   - "下单"
-  - "purchase"
+  - "公募下单"
+  - "公募买入"
+  - "主动买入"
+  - "申购"
+  - "认购"

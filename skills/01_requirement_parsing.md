@@ -19,9 +19,9 @@
 用户的原始需求描述（自然语言）。
 
 **示例**:
-- "查询最近 7 天的 DAU"
-- "帮我看下 1 月份新用户的次留，按渠道分"
-- "分析一下 VIP 用户的发帖情况"
+- "查询最近 7 天每日下单客户数"
+- "帮我看下 1 月份新开户客户的次月复购，按开户渠道分"
+- "分析一下黑金卡客户的 SOP 触达情况"
 
 ---
 
@@ -44,21 +44,21 @@
 **任务**: 识别用户想要查询的指标。
 
 **方法**:
-1. 查找指标关键词（DAU, MAU, 留存率, 发帖数等）
-2. 查找业务术语（活跃, 新增, 留存等）
-3. 翻译黑话为标准术语（参考 glossary.md）
+1. 查找指标关键词（日下单客户数、复购率、触达条数等）
+2. 查找业务术语（开户、首购、复购、触达等）
+3. 翻译黑话为标准术语（参考 `knowledge/metrics/`、`knowledge/semantics/` 中的 `aliases`）
 
 **示例**:
-- "DAU" → 日活跃用户数
-- "次留" → 次日留存率
-- "发帖情况" → 发帖数、发帖用户数、人均发帖数（需要澄清）
+- "日下单" → 日下单客户数
+- "次月复购" → 开户后次月再次下单的客户占比
+- "触达情况" → 触达条数、触达客户数、人均触达数（需要澄清）
 
 **输出**:
 ```json
 {
-  "metrics": ["DAU"],
-  "metrics_aliases": {"DAU": "日活跃用户数"},
-  "metrics_definition_file": "knowledge/metrics/dau.yaml"
+  "metrics": ["daily_buying_customer"],
+  "metrics_aliases": {"日下单": "日下单客户数"},
+  "metrics_definition_file": "knowledge/metrics/daily_buying_customer.yaml"
 }
 ```
 
@@ -67,19 +67,19 @@
 **任务**: 识别分析维度。
 
 **方法**:
-1. 查找维度关键词（按渠道、按平台、按日期等）
+1. 查找维度关键词（按开户渠道、按产品大类、按日期等）
 2. 识别时间粒度（日、周、月）
-3. 识别用户分层（新用户、VIP 用户等）
+3. 识别客户分层（新开户客户、黑金卡客户等）
 
 **示例**:
-- "按渠道分" → 维度: 渠道
+- "按开户渠道分" → 维度: open_channel
 - "最近 7 天" → 维度: 日期（日粒度）
-- "VIP 用户" → 筛选条件: user_type = 'VIP'
+- "黑金卡客户" → 筛选条件: 客户标签包含黑金卡（依赖 `knowledge/semantics/dimensions/` 中相应命名取值）
 
 **输出**:
 ```json
 {
-  "dimensions": ["date", "channel"],
+  "dimensions": ["dt", "open_channel"],
   "time_granularity": "daily"
 }
 ```
@@ -95,7 +95,7 @@
 
 **示例**:
 - "最近 7 天" → `{"type": "relative", "value": "last_7_days", "include_today": true}`
-- "1 月份" → `{"type": "absolute", "value": "2024-01", "start": "2024-01-01", "end": "2024-02-01"}`
+- "1 月份" → `{"type": "absolute", "value": "<YYYY-MM>", "start": "<YYYY-MM-01>", "end": "<下月-01>"}`
 - "昨天" → `{"type": "relative", "value": "yesterday"}`
 
 **输出**:
@@ -105,7 +105,7 @@
     "type": "relative",
     "value": "last_7_days",
     "include_today": true,
-    "sql_condition": "date >= date_add('day', -6, current_date) AND date <= current_date"
+    "sql_condition": "dt >= date_format(date_add('day', -6, current_date), '%Y-%m-%d') AND dt <= date_format(current_date, '%Y-%m-%d')"
   }
 }
 ```
@@ -115,15 +115,15 @@
 **任务**: 识别其他筛选条件。
 
 **示例**:
-- "VIP 用户" → `user_type = 'VIP'`
-- "iOS 平台" → `platform = 'iOS'`
-- "广告渠道" → `register_channel LIKE 'ad_%'`
+- "黑金卡客户" → 关联 `dwd_pat_juzi_mhlabel_record` 中的黑金卡标签
+- "外部渠道" → `flavor_type = 'external'`
+- "公募小雪触达" → `business_type = '公募小雪'`
 
 **输出**:
 ```json
 {
   "filters": [
-    {"field": "user_type", "operator": "=", "value": "VIP"}
+    {"field": "flavor_type", "operator": "=", "value": "external"}
   ]
 }
 ```
@@ -141,8 +141,8 @@
 ```json
 {
   "aggregation": {
-    "group_by": ["date", "channel"],
-    "order_by": ["date ASC", "channel ASC"],
+    "group_by": ["dt", "open_channel"],
+    "order_by": ["dt ASC", "open_channel ASC"],
     "limit": null
   }
 }
@@ -159,9 +159,9 @@
 - [ ] 是否有多种理解方式？
 
 **示例**:
-- "用户情况" → 不明确，是 DAU？新增？留存？
+- "客户情况" → 不明确，是日下单客户数？新开户客户数？复购率？
 - "最近" → 不明确，是包含今天还是不包含？
-- "活跃" → 需要确认活跃的定义
+- "活跃" → 需要确认活跃的定义（当日下单？当月下单？登录？）
 
 **输出**:
 ```json
@@ -169,8 +169,8 @@
   "uncertainties": [
     {
       "item": "指标",
-      "issue": "用户情况 不明确",
-      "options": ["DAU", "新增用户数", "活跃率"],
+      "issue": "客户情况 不明确",
+      "options": ["日下单客户数", "新开户客户数", "复购率"],
       "need_clarification": true
     }
   ]
@@ -185,8 +185,8 @@
 
 ```json
 {
-  "metrics": ["DAU"],
-  "dimensions": ["date", "channel"],
+  "metrics": ["daily_buying_customer"],
+  "dimensions": ["dt", "open_channel"],
   "time_range": {
     "type": "relative",
     "value": "last_7_days",
@@ -194,8 +194,8 @@
   },
   "filters": [],
   "aggregation": {
-    "group_by": ["date", "channel"],
-    "order_by": ["date ASC"]
+    "group_by": ["dt", "open_channel"],
+    "order_by": ["dt ASC"]
   },
   "uncertainties": []
 }
@@ -207,11 +207,11 @@
 
 ### 示例 1: 简单需求
 
-**输入**: "查询昨天的 DAU"
+**输入**: "查询昨天的下单客户数"
 
 **处理**:
-1. 读取 `knowledge/metrics/dau.yaml` - 确认 DAU 定义
-2. 识别指标: DAU
+1. 读取 `knowledge/metrics/daily_buying_customer.yaml` 确认指标定义
+2. 识别指标: 日下单客户数
 3. 识别时间: 昨天
 4. 识别维度: 无（只要总数）
 5. 无不确定项
@@ -219,7 +219,7 @@
 **输出**:
 ```json
 {
-  "metrics": ["DAU"],
+  "metrics": ["daily_buying_customer"],
   "dimensions": [],
   "time_range": {"type": "relative", "value": "yesterday"},
   "filters": [],
@@ -230,26 +230,26 @@
 
 ### 示例 2: 复杂需求
 
-**输入**: "帮我看下最近一个月新用户的次留情况，按渠道分"
+**输入**: "帮我看下最近一个月新开户客户的次月复购情况，按开户渠道分"
 
 **处理**:
 1. 读取 `knowledge/metrics/`、`knowledge/semantics/`
-2. 识别指标: 次日留存率
-3. 识别维度: 日期（注册日期）、渠道
-4. 识别时间: 最近一个月
-5. 识别筛选: 新用户
+2. 识别指标: 次月复购率
+3. 识别维度: 开户日期、开户渠道（flavor）
+4. 识别时间: 最近一个月（开户时间）
+5. 识别筛选: 新开户客户
 6. 标记不确定项:
-   - "最近一个月" - 30天还是自然月？
-   - "渠道" - 注册渠道还是活跃渠道？
+   - "最近一个月" - 30 天还是自然月？
+   - "复购口径" - 是否包含定投执行？
 
 **输出**:
 ```json
 {
-  "metrics": ["次日留存率"],
-  "dimensions": ["register_date", "channel"],
+  "metrics": ["next_month_repurchase_rate"],
+  "dimensions": ["open_date", "open_channel"],
   "time_range": {"type": "relative", "value": "last_month"},
-  "filters": [{"field": "is_new_user", "value": true}],
-  "aggregation": {"group_by": ["register_date", "channel"]},
+  "filters": [{"field": "is_new_customer", "value": true}],
+  "aggregation": {"group_by": ["open_date", "open_channel"]},
   "uncertainties": [
     {
       "item": "时间范围",
@@ -258,9 +258,9 @@
       "need_clarification": true
     },
     {
-      "item": "维度",
-      "issue": "渠道 不明确",
-      "options": ["注册渠道", "活跃渠道"],
+      "item": "复购口径",
+      "issue": "是否包含定投执行",
+      "options": ["仅主动买入", "含定投执行"],
       "need_clarification": true
     }
   ]
@@ -269,7 +269,7 @@
 
 ### 示例 3: 模糊需求
 
-**输入**: "看下用户情况"
+**输入**: "看下客户情况"
 
 **处理**:
 1. 识别指标: 不明确
@@ -282,8 +282,8 @@
   "uncertainties": [
     {
       "item": "指标",
-      "issue": "用户情况 过于模糊",
-      "options": ["DAU", "新增用户数", "活跃率", "留存率", "用户画像"],
+      "issue": "客户情况 过于模糊",
+      "options": ["日下单客户数", "新开户客户数", "复购率", "客户画像"],
       "need_clarification": true,
       "priority": "high"
     },
@@ -307,29 +307,27 @@
 
 ### 2. 识别黑话
 
-用户可能使用公司内部黑话，需要翻译为标准术语。
+用户可能使用公司内部黑话，需要翻译为标准术语。标准词一律以 `knowledge/metrics/` 与 `knowledge/semantics/` 中登记的 `name` 为准，别名由对应文件的 `aliases` 字段承载。
 
-**示例**:
-- "次留" → 次日留存率
-- "月活" → MAU
-- "拉新" → 新增用户
+**做法**:
+- 遇到非标准表述时，先在 `aliases` 中匹配；匹配不到的黑话必须走澄清流程，不能臆测。
 
 ### 3. 多义词处理
 
 有些词可能有多种理解，需要标记为不确定项。
 
-**示例**:
-- "活跃" - 可能指 DAU，也可能指活跃率
-- "用户" - 可能指全量用户，也可能指活跃用户
-- "渠道" - 可能指注册渠道，也可能指活跃渠道
+**做法**:
+- 同一个业务词在多个 `aliases` 中出现时，把全部候选列给用户选择；不要默认取其一。
+- 典型多义场景：同一个中文词对应多个指标（如"客户数"可能对应"下单客户数 / 开户客户数 / 触达客户数"）、或同一个维度词在不同实体上意义不同。
 
 ### 4. 隐含信息
 
-有些信息是隐含的，需要根据上下文推断。
+有些信息是隐含的，需要根据上下文推断，但推断结果必须能在知识库中找到对应定义。
 
-**示例**:
-- "查询 DAU" → 隐含维度是日期
-- "新用户的留存" → 隐含需要关联注册表和行为表
+**做法**:
+- 缺省维度：用户未指定 `group_by` 时，默认不分组（只产出总数）；若业务上显然需要分组（如"按渠道"是该指标的主要观察角度），必须在下一步主动澄清，不自行假设；
+- 缺省时间范围按用户给的时间粒度推断（如只说"每天"但没说几天 → 澄清窗口长度）；
+- 涉及多表的指标，按 pattern 定义中声明的事件来源展开，不自行选择表。
 
 ---
 
@@ -367,3 +365,4 @@
 | 日期 | 修改人 | 修改内容 |
 |------|--------|----------|
 | 2024-01-01 | AI | 创建文档 |
+| 2026-04-20 | AI | 清理虚构通用示例（DAU/MAU/留存）；澄清缺省维度策略，删除对不存在字段 `default_group_by` 的引用 |

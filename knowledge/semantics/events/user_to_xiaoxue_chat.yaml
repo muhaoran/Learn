@@ -1,0 +1,16 @@
+event_id: "user_to_xiaoxue_chat"
+name: "用户私聊小雪"
+entity: "private_domain_user"
+description: "私域用户在企业微信中向小雪发起私聊的消息记录。该表只包含私聊（不含群聊），群聊数据请使用 fundx_ads.ads_prodept_evt_juzi_message_date_i"
+
+source_table: "fundx_dwd.dwd_evt_wechat_private_chat_record_i"
+
+type_condition: "chat_type = 'user to xiaoxue'"
+
+date_field: "dt"
+
+aliases:
+  - "私聊小雪"
+  - "用户私聊"
+  - "主动私聊"
+  - "私聊消息"

@@ -1,0 +1,26 @@
+table_id: "dwd_evt_qw_private_domain_team_member"
+name: "企微私域群成员表（新）"
+full_name: "fundx_dwd.dwd_evt_qw_private_domain_team_member_s"
+layer: DWD
+description: "私域企微群与群成员关系表，由后端研发维护，计划替代句子数据源表 dwd_evt_puof_private_domain_team_member_s"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：PDF 中提及将替代 fundx_dwd.dwd_evt_puof_private_domain_team_member_s（句子群数据），字段尚未确认，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
+  - "业务上与旧表功能对齐，预计字段包含：群ID/群名称/群类型/成员wxid/成员昵称/是否退群/联系人类型 等。"
+  - "迁移完成前建议继续使用 fundx_dwd.dwd_evt_puof_private_domain_team_member_s（句子群数据）。"
+
+related_tables:
+  - table: "fundx_dwd.dwd_evt_puof_private_domain_team_member_s"
+    join_field: "（对齐口径的旧源表，待替代）"
+    join_type: "1:1"
+    purpose: "此表上线后替代句子的群数据源表"

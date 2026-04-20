@@ -1,0 +1,15 @@
+event_id: "fund_purchase_extended"
+name: "公募主动买入（含预约/定投预约）"
+entity: "user"
+description: "在默认主动买入口径基础上，额外纳入预约买入（action=223）与定投预约买入（action=339）。2025-09-03 起业务推荐使用此扩展口径，用于统计更完整的'主动买入行为'"
+
+source_table: "fundx_dwd.dwd_evt_parent_money_order_s"
+
+type_condition: "is_private = 0 AND (trade_mode IN (1,2,3,4,5) OR action IN ('223','339'))"
+
+date_field: "substr(init_time,1,10)"
+
+aliases:
+  - "全口径买入"
+  - "含预约买入"
+  - "2025-09-03 后买入口径"

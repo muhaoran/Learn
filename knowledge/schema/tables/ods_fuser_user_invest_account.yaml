@@ -1,0 +1,57 @@
+table_id: "ods_fuser_user_invest_account"
+name: "用户投资账户表"
+full_name: "fundx_ods.ods_fuser_user_invest_account_s_trans"
+layer: ODS
+description: "记录用户名下的投资子账户信息（三分法、默认账户、有知有行、用户自定义等），用于按子账户类型筛选资产与订单"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key:
+  - invest_account_id
+
+columns:
+  - name: "dt"
+    type: "date"
+    description: "分区日期"
+    nullable: false
+    is_partition: true
+    example: "2025-01-20"
+
+  - name: "invest_account_id"
+    type: "varchar"
+    description: "投资子账户 ID（与 dwd_ast_pub_daily_holding_detail_i.invest_account_id、ods_fundx_order_asset_transfer_detail_s.target_invest_account_id 对齐）"
+    nullable: false
+    is_partition: false
+
+  - name: "account_code"
+    type: "varchar"
+    description: "子账户代码，用于区分账户类型"
+    nullable: true
+    is_partition: false
+    enum_values:
+      - value: "TRICHOTOMY"
+        description: "三分法子账户"
+      - value: "DEFAULT"
+        description: "默认账户"
+      - value: "CUSTOM"
+        description: "用户自定义子账户"
+      - value: "YZYX"
+        description: "有知有行子账户"
+
+notes:
+  - "字段定义部分待补充：PDF 中仅显式使用 invest_account_id、account_code；其他字段（如 uid、状态字段）需要后续补齐。"
+  - "典型用法：通过 account_code='TRICHOTOMY' 找出所有三分法子账户 ID，再回到订单/持仓表中做子查询 IN 过滤。"
+
+related_tables:
+  - table: "fundx_ods.ods_fundx_order_asset_transfer_detail_s"
+    join_field: "invest_account_id=target_invest_account_id"
+    join_type: "1:N"
+    purpose: "三分法迁入判定（目标账户是否为三分法）"
+  - table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+    join_field: "invest_account_id"
+    join_type: "1:N"
+    purpose: "按子账户维度拆分持仓"

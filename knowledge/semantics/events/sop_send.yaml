@@ -1,0 +1,18 @@
+event_id: "sop_send"
+name: "SOP 消息发送"
+entity: "private_domain_user"
+description: "小雪侧向私域用户发送一条 SOP 消息。默认只纳入'公募小雪（business_type=3）+ 发送成功/发送中（status IN (4,6)）'的有效发送记录"
+
+source_table: "fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans"
+
+# 默认口径 = 公募线有效发送
+type_condition: "business_type = 3 AND status IN (4,6)"
+
+# 分区字段 dt 与实际发送日 send_time 可能不同，口径以 send_time 的日期为准
+date_field: "to_date(send_time)"
+
+aliases:
+  - "SOP 发送"
+  - "SOP 推送"
+  - "SOP 触达"
+  - "公募小雪发送"

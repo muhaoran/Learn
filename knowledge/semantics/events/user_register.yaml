@@ -1,0 +1,14 @@
+event_id: "user_register"
+name: "用户注册/开户"
+entity: "user"
+description: "蛋卷用户完成注册与开户。在本仓库的口径中，注册渠道分类表一条记录对应一个已开户用户，open_date 即为开户日期"
+
+source_table: "data_product.product_fund_uid_register_source_cleaning_s"
+
+date_field: "open_date"
+
+aliases:
+  - "注册"
+  - "开户"
+  - "新开户"
+  - "新注册"

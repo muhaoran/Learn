@@ -1,0 +1,23 @@
+dimension_id: "individual_or_institution"
+name: "用户类型（个人/机构/产品户）"
+entity: "user"
+description: "用户账户性质的区分，用于筛选个人户、机构户与产品户"
+
+aliases:
+  - "用户类型"
+  - "个人机构"
+  - "个人户"
+  - "机构户"
+  - "产品户"
+
+source_table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+join_key: "uid"
+sql_expr: "individual_or_institution"
+
+known_values:
+  - value: "0"
+    name: "机构户"
+  - value: "1"
+    name: "个人户"
+  - value: "2"
+    name: "产品户"

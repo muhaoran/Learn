@@ -1,0 +1,16 @@
+event_id: "relation_established"
+name: "建联"
+entity: "private_domain_user"
+description: "私域用户与小雪在企业微信侧建立好友关系（建联）。以私域用户基础信息表中的首次建联时间 first_relation_time 为准；该表是每日全量快照，查询时须带分区条件"
+
+source_table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+
+# 建联日期来自 first_relation_time 字段（快照表）
+date_field: "to_date(first_relation_time)"
+
+aliases:
+  - "建联"
+  - "首次建联"
+  - "加小雪"
+  - "好友关系建立"
+  - "加企微"

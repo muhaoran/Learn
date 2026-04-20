@@ -1,0 +1,21 @@
+entity_id: "private_domain_user"
+name: "私域用户"
+description: "企业微信侧的私域用户主体，以 wechat_id 为唯一身份；可能关联到蛋卷用户（dj_uid）与雪球用户（xq_uid），但并非所有私域用户都已开户"
+
+primary_key: "wechat_id"
+
+id_aliases:
+  - "wechat_union_id"   # 跨公众号/小程序的统一标识，部分聚合/分群口径使用
+  - "external_user_id"  # SOP 发送记录中对齐 wechat_id 的字段
+  - "external_id"       # SOP 流程表中表示外部用户侧的字段
+  - "from_id"           # 私聊记录中的发送方字段（用户侧）
+
+anchor_tables:
+  base_info: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+
+aliases:
+  - "私域用户"
+  - "企微用户"
+  - "建联用户"
+  - "wechat_id"
+  - "union_id"

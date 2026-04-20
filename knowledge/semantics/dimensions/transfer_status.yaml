@@ -1,0 +1,18 @@
+dimension_id: "transfer_status"
+name: "资产迁移状态"
+entity: "user"
+description: "资产迁移订单的状态，仅用于 ods_fundx_order_asset_transfer_detail_s 事件。默认口径中 'success' 为成功"
+
+aliases:
+  - "迁移状态"
+  - "迁入状态"
+  - "transfer_status"
+  - "是否迁移成功"
+
+source_table: "fundx_ods.ods_fundx_order_asset_transfer_detail_s"
+join_key: "uid"
+sql_expr: "status"
+
+known_values:
+  - value: "success"
+    name: "迁移成功"

@@ -36,15 +36,16 @@
 2. 如果找到匹配项，读取其 `pattern` 和 `pattern_params`
 3. 如果没有找到，该指标可以即时推导（跳到步骤 2 直接根据需求确定 Pattern）
 
-**输出示例**:
+**输出结构**:
 ```
-指标: DAU
-找到: knowledge/metrics/dau.yaml
-  pattern: count_distinct
+指标: <metric_name>
+找到: knowledge/metrics/<metric_id>.yaml
+  pattern: <pattern_id>
   pattern_params:
-    entity: user
-    event: "active_behavior"
-    time_window: date = ${target_date}
+    entity: <entity_id>
+    event: "<event_id>"
+    time_window: <时间条件表达式>
+    # 其他 pattern 专属字段按 pattern 接口填写
 ```
 
 ---
@@ -67,12 +68,12 @@
 - 求和 → `sum_metric`
 - 比值类指标 → 分子分母各走一次 `count_distinct` / `sum_metric`，同表内联或跨表 CTE
 
-**输出示例**:
+**输出结构**:
 ```
-Pattern: count_distinct
-sql_template: 读取自 knowledge/patterns/count_distinct.yaml
-需要参数: entity, event, time_window, group_by(可选), where_dimension_values(可选), where_named_values(可选)
-当前参数: entity=user, event=active_behavior, time_window=date='2024-01-01'
+Pattern: <pattern_id>
+sql_template: 读取自 knowledge/patterns/<pattern_id>.yaml
+需要参数: <参数列表，来自该 pattern 的 parameters 定义>
+当前参数: <从步骤 1 拿到的实际取值>
 ```
 
 ---
@@ -101,20 +102,21 @@ sql_template: 读取自 knowledge/patterns/count_distinct.yaml
 - 读取 `knowledge/semantics/dimensions/*.yaml` 中对应的 `named_values` 条目
 - 获取 `sql_condition`（可能含参数）和 `depends_on_events`
 
-**输出示例**:
+**输出结构**:
 ```
-Entity(user):
-  primary_key: user_id
-  anchor_table: dim_user
+Entity(<entity_id>):
+  primary_key: <实体主键字段>
+  anchor_tables:               # 字典：key → 表全名；pattern 通过 anchor_table: <key> 引用
+    <key>: <实体锚点表>
 
-Event(active_behavior):
-  source_table: dwd_user_behavior
-  type_condition: (无，全表都是活跃行为)
+Event(<event_id>):
+  source_table: <事件来源表>
+  type_condition: <事件类型过滤条件，若无则为空>
 
-Dimension(user_register_channel) [group_by]:
-  source_table: dwd_user_register
-  join_key: user_id
-  sql_expr: register_channel
+Dimension(<dimension_id>) [group_by]:
+  source_table: <维度来源表>
+  join_key: <与实体连接的 key>
+  sql_expr: <用于 SELECT/GROUP BY 的表达式>
 ```
 
 ---
@@ -131,16 +133,16 @@ Dimension(user_register_channel) [group_by]:
 3. 确认分区字段（用于 WHERE 条件）
 4. 读取 `notes` 中的性能注意事项
 
-**输出示例**:
+**输出结构**:
 ```
-表: dwd_user_behavior
-  分区字段: date（必须在 WHERE 中指定）
-  用到的字段: user_id ✅, date ✅
-  注意: 数据量极大，必须加 date 分区条件
+表: <事件来源表>
+  分区字段: <partition_field>（必须在 WHERE 中指定）
+  用到的字段: <字段列表，逐一对照 columns 检查>
+  注意: <来自 notes 的性能/口径提示>
 
-表: dwd_user_register（group_by 需要 JOIN）
-  分区字段: register_date
-  用到的字段: user_id ✅, register_channel ✅
+表: <维度来源表>（若 group_by 需要 JOIN）
+  分区字段: <partition_field>
+  用到的字段: <join_key、sql_expr 中涉及的字段>
 ```
 
 ---
@@ -152,15 +154,15 @@ Dimension(user_register_channel) [group_by]:
 **输出结构**:
 ```
 retrieval_result:
-  metric: dau（来自 metrics/dau.yaml）
-  pattern: count_distinct（来自 patterns/count_distinct.yaml）
+  metric: <metric_id>（来自 metrics/<metric_id>.yaml）
+  pattern: <pattern_id>（来自 patterns/<pattern_id>.yaml）
   semantic_resolution:
-    entity: {id: user, primary_key: user_id}
-    event: {id: active_behavior, source_table: dwd_user_behavior}
-    group_by: [{id: user_register_channel, sql_expr: register_channel, source_table: dwd_user_register, join_key: user_id}]
+    entity: {id: <entity_id>, primary_key: <字段>}
+    event: {id: <event_id>, source_table: <表名>}
+    group_by: [{id: <dimension_id>, sql_expr: <表达式>, source_table: <表名>, join_key: <字段>}]
   schema:
-    dwd_user_behavior: {partition: date, notes: [必须加 date 分区条件]}
-    dwd_user_register: {partition: register_date}
+    <表名1>: {partition: <partition_field>, notes: [<关键提示>]}
+    <表名2>: {partition: <partition_field>}
   ready_for_generation: true
 ```
 
@@ -184,15 +186,15 @@ C. 留存率（同期群分析）"
 
 说明该实体/事件/维度尚未定义，告知用户：
 ```
-"知识库中暂无「XX维度」的定义。请告知：
-1. 这个维度对应哪张表的哪个字段？
+"知识库中暂无「<语义名称>」的定义。请告知：
+1. 这个语义对象对应哪张表的哪个字段？
 2. 需要我将其加入知识库吗？"
 ```
 
 ### 情况 3: 表或字段在 schema/ 中不存在
 
 ```
-"知识库中暂无表 XXX 的文档。请确认：
+"知识库中暂无表 <table_name> 的文档。请确认：
 1. 表名是否正确？
 2. 这张表的分区字段是什么？"
 ```
@@ -215,3 +217,4 @@ C. 留存率（同期群分析）"
 |------|--------|----------|
 | 2024-01-01 | AI | 创建文档 |
 | 2026-04-09 | AI | 按新四层架构重构检索流程 |
+| 2026-04-20 | AI | 清理虚构示例；输出结构中 `anchor_table: <table>` 改为 `anchor_tables: {<key>: <table>}` 字典 |

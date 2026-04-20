@@ -1,6 +1,6 @@
 pattern_id: "count_distinct"
 name: "去重计数"
-description: "统计满足条件的某类实体的去重数量，是 DAU/MAU/新增用户数/发帖用户数等指标的通用计算模式"
+description: '统计满足条件的某类实体的去重数量，是各类"去重主体个数"指标的通用计算模式（固定日期 / 滚动窗口均可，滚动窗口通过 time_window.window_days 指定）'
 
 parameters:
   entity:
@@ -16,7 +16,7 @@ parameters:
   where_dimension_values:
     type: "list<{dimension_id: Dimension, value: string}>"
     required: false
-    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+    description: "按维度字段的具体值过滤，展开为 AND sql_expr = 'value'；如 [{dimension_id: <dimension_id>, value: '<value>'}]"
 
   where_named_values:
     type: "Dimension.NamedValue[]"
@@ -49,69 +49,44 @@ sql_template: |
   ${GROUP BY group_by.expr, ...}
 
 example_usage:
-  - description: "计算某天的 DAU（活跃用户数）"
+  # ── 占位示例（说明展开规则；实际使用时把 <event_table>/<entity_pk> 替换为真实表/字段） ──
+  - description: "占位骨架：固定窗口 + 单事件"
     parameters:
-      entity: "user"
-      event: "active_behavior"
-      time_window: "date = '2024-01-01'"
+      entity: "<entity_id>"                # → primary_key = <entity_pk>
+      event:  "<event_id>"                 # → FROM <event_table> [WHERE <type_condition>]
+      time_window: "<partition_field> = '<date>'"
     generated_sql: |
       SELECT
-        COUNT(DISTINCT user_id) AS cnt
-      FROM dwd_user_behavior
-      WHERE date = '2024-01-01'
+        COUNT(DISTINCT <entity_pk>) AS cnt
+      FROM <event_table>
+      WHERE <partition_field> = '<date>'
+        [AND <event.type_condition>]
 
-  - description: "按注册渠道分组，统计某天 DAU"
+  - description: "占位骨架：滚动窗口"
     parameters:
-      entity: "user"
-      event: "active_behavior"
-      time_window: "date = '2024-01-01'"
-      group_by: ["user_register_channel"]
-    generated_sql: |
-      SELECT
-        r.register_channel,
-        COUNT(DISTINCT b.user_id) AS cnt
-      FROM dwd_user_behavior b
-      JOIN dwd_user_register r ON b.user_id = r.user_id
-      WHERE b.date = '2024-01-01'
-      GROUP BY r.register_channel
-
-  - description: "统计某天 iOS 平台上发帖的新用户数，按注册渠道分组"
-    parameters:
-      entity: "user"
-      event: "post_publish"
-      where_dimension_values:
-        - dimension_id: user_platform
-          value: "iOS"
-      where_named_values:
-        - new_user
-      time_window: "date = '2024-01-01'"
-      group_by: ["user_register_channel"]
-    generated_sql: |
-      SELECT
-        r.register_channel,
-        COUNT(DISTINCT b.user_id) AS cnt
-      FROM dwd_user_behavior b
-      JOIN dwd_user_register r ON b.user_id = r.user_id
-      WHERE b.behavior_type = 'create_post'
-        AND b.platform = 'iOS'
-        AND b.date = '2024-01-01'
-        AND b.user_id IN (
-          SELECT user_id
-          FROM dwd_user_register
-          WHERE register_date = '2024-01-01'
-        )
-      GROUP BY r.register_channel
-
-  - description: "计算截至 2024-01-31 的近 30 日 MAU（滚动窗口）"
-    parameters:
-      entity: "user"
-      event: "active_behavior"
+      entity: "<entity_id>"
+      event:  "<event_id>"
       time_window:
-        end_date: "2024-01-31"
+        end_date: "<end_date>"
         window_days: 30
     generated_sql: |
       SELECT
-        COUNT(DISTINCT user_id) AS cnt
-      FROM dwd_user_behavior
-      WHERE date > date_add('day', -30, DATE '2024-01-31')
-        AND date <= DATE '2024-01-31'
+        COUNT(DISTINCT <entity_pk>) AS cnt
+      FROM <event_table>
+      WHERE <partition_field> > date_add('day', -30, DATE '<end_date>')
+        AND <partition_field> <= DATE '<end_date>'
+        [AND <event.type_condition>]
+
+  # ── 真实业务表示例（基于 fundx_dwd.dwd_evt_parent_money_order_s） ─────
+  - description: "统计某天发生公募主动买入的去重用户数"
+    parameters:
+      entity: "user"                                            # primary_key = uid
+      event:  "fund_purchase"                                   # → FROM dwd_evt_parent_money_order_s WHERE is_private=0 AND trade_mode IN (1,2,3,4,5)
+      time_window: "dt = '2024-01-01'"
+    generated_sql: |
+      SELECT
+        COUNT(DISTINCT uid) AS cnt
+      FROM fundx_dwd.dwd_evt_parent_money_order_s
+      WHERE dt = '2024-01-01'
+        AND is_private = 0
+        AND trade_mode IN (1,2,3,4,5)

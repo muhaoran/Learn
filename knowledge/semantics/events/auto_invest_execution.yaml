@@ -1,0 +1,14 @@
+event_id: "auto_invest_execution"
+name: "定投执行"
+entity: "user"
+description: "定投计划的一次实际扣款执行记录，包括成功与失败的执行结果。失败时 status='failed'、err_msg 会带上失败原因"
+
+source_table: "fundx_dwd.dwd_evt_plan_auto_invest_record_s"
+
+date_field: "dt"
+
+aliases:
+  - "定投执行"
+  - "定投扣款"
+  - "定投触发"
+  - "定投成交"

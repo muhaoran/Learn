@@ -1,0 +1,23 @@
+metric_id: "fund_purchase_user_count"
+name: "公募主动买入人数"
+description: "在指定时间范围内，发起过公募主动买入行为（trade_mode IN (1,2,3,4,5)）的去重用户数。2025-09-03 起业务线推荐使用扩展口径（含预约买入 action=223/定投预约 action=339），使用扩展口径时切换 event 为 fund_purchase_extended"
+
+pattern: "count_distinct"
+
+pattern_params:
+  entity: "user"
+  event: "fund_purchase"
+  time_window: "dt = ${target_date}"
+
+aliases:
+  - "公募买入人数"
+  - "公募下单人数"
+  - "主动买入人数"
+  - "下单人数"
+  - "主动下单人数"
+  - "基金下单人数"
+
+notes:
+  - "分区字段 dt 与下单日期 init_time 可能不一致；严格按下单日统计时，time_window 改写为 'dt = ${target_date} AND substr(init_time,1,10) = ${target_date}'"
+  - "若需要 2025-09-03 起的扩展口径（含预约买入/定投预约），切换 event: fund_purchase_extended"
+  - "T+1 更新，当天数据次日可用"

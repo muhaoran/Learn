@@ -1,0 +1,26 @@
+dimension_id: "trade_mode"
+name: "交易模式"
+entity: "user"
+description: "公募主动买入的细分交易模式（认购/申购/定投/转换入）。仅在 dwd_evt_parent_money_order_s 中有效"
+
+aliases:
+  - "trade_mode"
+  - "买入方式"
+  - "交易方式"
+  - "交易类型"
+
+source_table: "fundx_dwd.dwd_evt_parent_money_order_s"
+join_key: "uid"
+sql_expr: "trade_mode"
+
+known_values:
+  - value: "1"
+    name: "主动认购"
+  - value: "2"
+    name: "主动申购"
+  - value: "3"
+    name: "主动定投"
+  - value: "4"
+    name: "主动普通转换入"
+  - value: "5"
+    name: "主动超级转转入"

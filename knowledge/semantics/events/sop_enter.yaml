@@ -1,0 +1,15 @@
+event_id: "sop_enter"
+name: "SOP 流程进入"
+entity: "private_domain_user"
+description: "私域用户进入某个 SOP 流程的事件。一张表里包含多种 SOP 流程，通过 flow_id 区分（如公募咨询 'Process_078kZXGM'）"
+
+source_table: "fundx_ods.ods_fundx_socialcrm_flow_detail_s"
+
+# 一张表里多种流程共存，具体流程在查询时通过 flow_id 过滤，此处不内嵌
+date_field: "substr(cast(create_time as varchar),1,10)"
+
+aliases:
+  - "SOP 进入"
+  - "SOP 触达"
+  - "进入 SOP"
+  - "进入流程"

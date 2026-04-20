@@ -15,9 +15,11 @@ raw_knowledge/
 ├── README.md       # 本文档
 ├── mixed/          # 放原始资料的地方
 └── processed/      # AI 处理完后，原始文件归档到这里
+    ├── <原文件>
+    └── <原文件>.处理记录.md   # 与原文件同名，记录本次产出清单与遗留事项
 ```
 
-只有两个目录，`mixed/` 放进来，`processed/` 存档。
+只有两个目录，`mixed/` 放进来，`processed/` 存档 + 处理记录。
 
 ---
 
@@ -33,6 +35,15 @@ raw_knowledge/
 
 **第三步**：AI 会从原始资料中识别信息，按新架构写入 `knowledge/` 对应位置，完成后将原始文件移入 `processed/`
 
+**第四步**：AI 在 `processed/` 下与原文件**同名**写一份 `<原文件名>.处理记录.md`，沉淀：
+
+- 本次处理时间
+- 产出清单（新增/修改的 schema / semantics / patterns / metrics 文件）
+- 遗留事项（字段待补、指标待加、pattern 待建、口径待澄清等）
+- 原始资料与产出的映射（可选：PDF 第 X 节 → 哪些文件）
+
+该记录是下次再处理同类资料的起点：AI 下次处理新资料前会先读 `processed/` 下的处理记录，避免重复提问或遗漏已知缺口。
+
 ---
 
 ## AI 处理的目标结构
@@ -42,8 +53,8 @@ AI 解析原始资料后，会判断每条信息属于哪一层，写入对应�
 | 识别到的内容 | 写入位置 |
 |-------------|----------|
 | 表名、字段、类型、分区、枚举值 | `knowledge/schema/tables/` |
-| 业务对象（用户/帖子/订单）的定义 | `knowledge/semantics/entities/` |
-| 业务动作（注册/活跃/发帖）的定义 | `knowledge/semantics/events/` |
+| 业务对象的定义 | `knowledge/semantics/entities/` |
+| 业务动作的定义 | `knowledge/semantics/events/` |
 | 实体属性维度或计算属性分群的定义 | `knowledge/semantics/dimensions/` |
 | 可复用的计算逻辑 | `knowledge/patterns/` |
 | 有独立名称的指标口径 | `knowledge/metrics/` |
@@ -52,7 +63,7 @@ AI 解析原始资料后，会判断每条信息属于哪一层，写入对应�
 
 ## 原始资料的典型形态
 
-- 一段混乱的会议记录（"DAU 就是日活，user_behavior 表有 user_id 和 behavior_type…"）
+- 一段混乱的会议记录（业务口径讲解、字段解释混在一起的文字）
 - 一份 Excel 数据字典（表名、字段、类型混在一起）
 - 一些 SQL 片段（MySQL 或 Hive 语法也没关系，AI 会转换成 Trino）
 - 一份 Word 需求文档（业务定义和表结构混写）
@@ -67,3 +78,5 @@ AI 解析原始资料后，会判断每条信息属于哪一层，写入对应�
 - 哪些地方不确定，需要你确认
 
 不确定的地方 AI 会主动提问，不会自己猜然后悄悄写进去。
+
+AI 会同时把上述信息写入 `processed/<原文件>.处理记录.md`，作为该批次处理的可追溯档案。

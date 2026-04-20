@@ -1,12 +1,13 @@
-dimension_id: "fund_register_channel_type"
+dimension_id: "flavor_type"
 name: "注册渠道类型"
 entity: "user"
-description: "用户注册来源的渠道类型分类"
+description: "用户注册/开户时的渠道大类分类（外部渠道 / 内部渠道 / 自然流量）"
 
 aliases:
   - "渠道类型"
   - "注册渠道类型"
-  - "flavor_type"
+  - "开户渠道类型"
+  - "渠道分类"
 
 source_table: "data_product.product_fund_uid_register_source_cleaning_s"
 join_key: "uid"
@@ -14,10 +15,8 @@ sql_expr: "flavor_type"
 
 known_values:
   - value: "外部渠道"
-    name: "外部渠道"
+    name: "外部投放/站外来源"
   - value: "内部渠道"
-    name: "内部渠道"
+    name: "站内运营来源"
   - value: "自然流量"
-    name: "自然流量"
-  - value: null
-    name: "未分类"
+    name: "非投放自然进入"

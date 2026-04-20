@@ -1,8 +1,8 @@
 table_id: "ods_fundx_order_asset_transfer_detail"
-name: "三分法迁移订单明细表"
+name: "资产迁移明细表"
 full_name: "fundx_ods.ods_fundx_order_asset_transfer_detail_s"
 layer: ODS
-description: "记录资产迁移类订单明细，三分法迁入口径主要基于 biz_type='transfer' 与目标账户为 TRICHOTOMY"
+description: "记录资产迁移订单明细（迁移下单时间、金额、状态、目标投资账户等）。三分法迁入口径主要基于 biz_type='transfer' 与目标账户 account_code='TRICHOTOMY'"
 
 storage:
   partition_field: "dt"
@@ -21,7 +21,7 @@ columns:
 
   - name: "create_time"
     type: "timestamp"
-    description: "创建时间"
+    description: "创建时间（下单时间）"
     nullable: true
     is_partition: false
 
@@ -33,7 +33,7 @@ columns:
 
   - name: "amount"
     type: "decimal"
-    description: "迁移金额"
+    description: "迁移下单金额"
     nullable: true
     is_partition: false
 
@@ -63,82 +63,10 @@ columns:
 
 notes:
   - "三分法迁入口径：biz_type='transfer' 且目标账户 account_code='TRICHOTOMY'"
-  - "统计区间通常按 substr(cast(create_time as varchar),1,10) 计算下单日期"
+  - "按日统计迁移人数和金额常用 create_time 截断到日期，可写作 substr(cast(create_time as varchar),1,10)"
 
 related_tables:
   - table: "fundx_ods.ods_fuser_user_invest_account_s_trans"
     join_field: "target_invest_account_id=invest_account_id"
     join_type: "N:1"
-    purpose: "筛选三分法账户（account_code='TRICHOTOMY'）"
-table_id: "ods_fundx_order_asset_transfer_detail"
-name: "资产迁移明细表"
-full_name: "fundx_ods.ods_fundx_order_asset_transfer_detail_s"
-layer: ODS
-description: "记录资产迁移订单明细，含迁移下单时间、金额、状态、目标投资账户等信息"
-
-storage:
-  partition_field: "dt"
-  update_frequency: "每日"
-  data_range: "历史全量"
-  retention: "永久保留"
-
-primary_key: []
-
-columns:
-  - name: "dt"
-    type: "date"
-    description: "分区日期"
-    nullable: false
-    is_partition: true
-
-  - name: "uid"
-    type: "bigint"
-    description: "用户ID"
-    nullable: true
-    is_partition: false
-
-  - name: "create_time"
-    type: "timestamp"
-    description: "下单时间"
-    nullable: true
-    is_partition: false
-
-  - name: "amount"
-    type: "decimal"
-    description: "迁移下单金额"
-    nullable: true
-    is_partition: false
-
-  - name: "status"
-    type: "varchar"
-    description: "迁移状态"
-    nullable: true
-    is_partition: false
-    enum_values:
-      - value: "success"
-        description: "迁移成功"
-
-  - name: "biz_type"
-    type: "varchar"
-    description: "业务类型"
-    nullable: true
-    is_partition: false
-    enum_values:
-      - value: "transfer"
-        description: "迁移业务"
-
-  - name: "target_invest_account_id"
-    type: "varchar"
-    description: "目标投资账户ID"
-    nullable: true
-    is_partition: false
-
-notes:
-  - "三分法迁入口径：biz_type='transfer' 且目标账户 account_code='TRICHOTOMY'"
-  - "按日统计迁移人数和金额常用 create_time 截断到日期"
-
-related_tables:
-  - table: "fundx_ods.ods_fuser_user_invest_account_s_trans"
-    join_field: "target_invest_account_id=invest_account_id"
-    join_type: "N:1"
-    purpose: "筛选 TRICHOTOMY 子账户"
+    purpose: "筛选三分法子账户（account_code='TRICHOTOMY'）"

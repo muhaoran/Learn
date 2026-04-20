@@ -7,17 +7,22 @@
 # 注意：Event 不包含属性过滤（如"渠道=app_store 的注册"）
 # 属性过滤应通过 Dimension 的 named_values 定义，或在 Metric 中组合
 
-event_id: "your_event_id"           # 英文标识，全小写下划线
-name: "中文名"
-entity: "user"                      # 该事件的主体实体 entity_id
-description: "这件事是什么，一句话说清楚（只描述事实，不包含限定条件）"
+event_id: "<event_id>"              # 英文标识，全小写下划线
+name: "<中文名>"
+entity: "<entity_id>"               # 该事件的主体实体 entity_id
+description: "<这件事是什么，一句话说清楚（只描述事实，不包含限定条件）>"
 
-source_table: "schema.table_name"   # 该事件在哪张表中记录，填写实际全名
+source_table: "<schema>.<table_name>"  # 该事件在哪张表中记录，填写实际全名
 
 # 可选：如果 source_table 中混合了多种事件，用此字段区分
-# 如果整张表就是一种事件（如 dwd_user_register），则不需要
-type_condition: "behavior_type = 'create_post'"
+# 如果整张表就是一种事件，则不需要
+type_condition: "<type_field> = '<value>'"
+
+# 业务日期字段（区别于 schema 的 storage.partition_field）
+# 用于 cohort_retention 等 pattern 做 D0 基准日与 D+N 留存日的对齐
+# 通常是"事件发生日"字段（如 open_date、trade_date）；若业务日期就是分区字段，也填写分区字段名
+date_field: "<event_date_column>"
 
 aliases:
-  - "别名1"
-  - "别名2"
+  - "<别名1>"
+  - "<别名2>"

@@ -1,49 +1,59 @@
 # 指标目录（Metric）定义模板
 
-metric_id: "your_metric_id"         # 英文标识，全小写下划线
-name: "中文指标名"
-description: "这个指标衡量什么，一句话说清楚口径"
+metric_id: "<your_metric_id>"       # 英文标识，全小写下划线
+name: "<中文指标名>"
+description: "<这个指标衡量什么，一句话说清楚口径>"
 
 # 使用哪个计算模式
-pattern: "count_distinct"           # 对应 patterns/ 目录中的 pattern_id
+pattern: "<pattern_id>"             # 对应 patterns/ 目录中的 pattern_id，如 count_distinct / sum_metric / cohort_retention
 
 # 传给 Pattern 的参数（参数名必须与 Pattern 中定义的一致）
 pattern_params:
   # ── 统计主体 ──────────────────────────────────────────────────────
-  entity: "user"                    # count_distinct 必填；sum_metric 快照型必填
+  entity: "<entity_id>"             # count_distinct 必填；sum_metric 快照型必填
 
   # ── 数据来源（按 pattern 类型选择，只填对应的一项）────────────────
   # count_distinct / sum_metric 事件型填这个：
-  event: "active_behavior"        # 对应 semantics/events/ 中的 event_id，从中推导来源表
+  event: "<event_id>"               # 对应 semantics/events/ 中的 event_id，从中推导来源表
   # sum_metric 快照型填这个：
-  anchor_table: "holding"         # 对应 semantics/entities/ 中该实体的 anchor_tables 下的 key（如 user.yaml 中的 "holding"）
+  anchor_table: "<anchor_table_key>" # 对应 semantics/entities/ 中该实体的 anchor_tables 下的 key
 
   # ── sum_metric 专用 ───────────────────────────────────────────────
-  sum_field: "amount"             # 要求和的字段名
+  sum_field: "<measure_field>"      # 要求和的字段名
 
   # ── 时间范围（必填，二选一）─────────────────────────────────────
   # 固定窗口写法：
-  time_window: "date = ${target_date}"
+  time_window: "<partition_field> = ${target_date}"
   # 滚动窗口写法：
   # time_window:
   #   end_date: ${end_date}
-  #   window_days: 30
+  #   window_days: <N>
 
   # ── 过滤条件（可选）──────────────────────────────────────────────
   where_dimension_values:
-    - dimension_id: user_platform
-      value: "iOS"
+    - dimension_id: <dimension_id>
+      value: "<value>"
   where_named_values:
-    - new_user
+    - <named_value_id>
 
   # ── 分组（可选）──────────────────────────────────────────────────
-  group_by: [user_register_channel]
+  group_by: [<dimension_id>]
+
+  # ── cohort_retention 专用 ─────────────────────────────────────────
+  # 以下字段仅当 pattern: cohort_retention 时使用，其他 pattern 请删除本段
+  # cohort_event: "<event_id>"            # 基准事件（如开户、首购）
+  # cohort_date: "<cohort_date_field> = ${target_date}"   # D0 基准日的 SQL 条件
+  # retain_event: "<event_id>"            # 留存事件（如再次交易、再次活跃）
+  # retain_where_named_values:            # 可选：对留存事件再做命名分群过滤
+  #   - dimension_id: <dimension_id>
+  #     value_id: <named_value_id>
+  # offset_days: <N>                      # D+N 的 N；D1 填 1、D7 填 7
 
 # 该指标的别名，AI 用于识别用户意图
 aliases:
-  - "别名1"
-  - "别名2"
-  - "EnglishAlias"
+  - "<别名1>"
+  - "<别名2>"
+  - "<EnglishAlias>"
 
 notes:
-  - "使用注意事项（如：T+1 更新，当天数据不可用）"
+  - "<使用注意事项，例如：T+1 更新，当天数据不可用>"

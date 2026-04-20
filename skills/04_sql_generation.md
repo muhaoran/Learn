@@ -6,7 +6,7 @@
 
 基于需求和检索到的知识，生成准确、高效、可读的 SQL 语句（使用 Trino 语法）。
 
-**重要**: 所有 SQL 必须使用 Trino 语法规范，不能使用 MySQL、Hive、Presto 等其他数据库的语法。
+**重要**: 所有 SQL 必须使用 Trino 语法规范。Trino 是 PrestoSQL 的继承版本，多数 Presto 语法可直接使用；但必须以 Trino 官方文档为准，不得使用 MySQL、Hive 专属语法，也不得使用 PrestoDB（Facebook 分支）与 Trino 已不兼容的函数。
 
 ---
 
@@ -39,19 +39,19 @@
 
 | 参数类型 | 展开规则 |
 |----------|----------|
-| `Entity` | `${entity.primary_key}` → 实体的主键字段名（如 `user_id`） |
+| `Entity` | `${entity.primary_key}` → 实体定义中的主键字段名 |
 | `Event` | `${event.source_table}` → 事件的表名；`${event.type_condition}` → 类型过滤条件（如有） |
 | `Dimension` | `${dimension.sql_expr}` → 字段名或表达式；需要 JOIN 时加入 JOIN 子句 |
 | `NamedValue` | `${named_value.sql_condition}` → 展开为子查询条件 |
 | `date_expr` | 直接替换为 Trino 日期表达式 |
 
-**示例**（count_distinct Pattern，DAU 需求）：
+**展开示意**（以 count_distinct Pattern 为例）：
 ```
 参数代入前（模板）:
   COUNT(DISTINCT ${entity.primary_key}) FROM ${event.source_table} WHERE ${time_window}
 
 参数代入后:
-  COUNT(DISTINCT user_id) FROM dwd_user_behavior WHERE date = '2024-01-01'
+  COUNT(DISTINCT <entity.primary_key>) FROM <event.source_table> WHERE <time_window 的实际表达式>
 ```
 
 ### 步骤 2: 选择数据表
@@ -64,14 +64,13 @@
 **决策流程**:
 ```
 Event 对应的 source_table 是什么层？
-├─ DWS/ADS → 直接使用，性能好 ✅
+├─ ADS/DWS → 直接使用，性能好 ✅
 └─ DWD → 使用，但必须加分区条件 ⚠️
 ```
 
-**示例**:
-- 查询 DAU（active_behavior）→ `dwd_user_behavior`（明细），或改用 `dws_user_daily`（汇总，is_active=1）
-- 查询新增用户数（registration）→ `dwd_user_register`
-- 查询留存率（cohort_retention）→ `dwd_user_register` + `dwd_user_behavior`
+**做法**：
+- 读取 Event 定义中的 `source_table`，再对应到 `knowledge/schema/tables/<table>.yaml` 的 `layer` 字段选择最高层级。
+- 如果同一业务含义在 DWS 和 DWD 都存在（Event 定义会指明），按上表优先级选择。
 
 ### 步骤 3: 构建 WHERE 条件
 
@@ -80,16 +79,16 @@ Event 对应的 source_table 是什么层？
 2. **时间范围**: 根据需求设置
 3. **筛选条件**: 根据需求设置
 
-**示例**:
+**结构**:
 ```sql
 WHERE 
-    -- 分区字段（必须）
-    date >= '2024-01-01'
-    AND date < '2024-01-08'
+    -- 分区字段（必须，字段名来自对应表的 storage.partition_field）
+    <partition_field> >= <start_date>
+    AND <partition_field> < <end_date>
     
-    -- 业务筛选条件
-    AND is_active = 1
-    AND platform = 'iOS'
+    -- 业务筛选条件（来自需求 + 维度命名取值的 sql_condition）
+    AND <filter_condition_1>
+    AND <filter_condition_2>
 ```
 
 **注意**:
@@ -104,25 +103,24 @@ WHERE
 2. **指标字段**: 计算的指标
 3. **字段别名**: 清晰的别名
 
-**示例**:
+**结构**:
 ```sql
 SELECT 
-    -- 维度字段
-    date,
-    register_channel,
+    -- 维度字段（来自 group_by 维度的 sql_expr）
+    <dimension_expr_1>,
+    <dimension_expr_2>,
     
-    -- 指标字段
-    COUNT(DISTINCT user_id) as dau,
-    SUM(post_count) as total_posts,
+    -- 指标字段（来自 pattern 定义的聚合字段）
+    <aggregate_expr> AS <metric_alias>,
     
-    -- 计算字段
-    ROUND(SUM(post_count) * 1.0 / COUNT(DISTINCT user_id), 2) as avg_posts_per_user
+    -- 比值类计算字段：必须用 NULLIF 防除零
+    ROUND(<numerator> * 1.0 / NULLIF(<denominator>, 0), <precision>) AS <ratio_alias>
 ```
 
 **注意**:
 - 避免 SELECT *
-- 使用有意义的别名
-- 计算字段要处理精度和 NULL
+- 别名使用指标定义中的 `metric_id` 或 `name` 对应的英文名
+- 比值类必须 `NULLIF(denominator, 0)`
 
 ### 步骤 5: 构建 JOIN（如果需要）
 
@@ -132,24 +130,20 @@ SELECT
 3. 小表驱动大表
 
 **JOIN 类型选择**:
-- **LEFT JOIN**: 需要保留左表所有记录（如留存分析、转化分析）
+- **LEFT JOIN**: 需要保留左表所有记录（如 `cohort_retention` 的 base/retained 关联）
 - **INNER JOIN**: 只需要两表都有的记录
 
-**示例**:
+**结构**:
 ```sql
--- 留存分析：必须用 LEFT JOIN
-FROM 
-    dwd_user_register r
-LEFT JOIN 
-    dwd_user_behavior b
-ON 
-    r.user_id = b.user_id
-    AND b.date = date_add('day', 1, r.register_date)
+FROM <left_table> <l>
+LEFT JOIN <right_table> <r>
+  ON  <l>.<join_key> = <r>.<join_key>
+  AND <r>.<partition_field> <时间关系>       -- JOIN 表自己的分区过滤也必须加
 ```
 
 **注意**:
 - JOIN 条件要完整
-- 注意分区字段的过滤
+- **JOIN 表自己的分区字段也必须在 ON 或 WHERE 中过滤**（主表分区无法下推到 JOIN 表）
 - 避免笛卡尔积
 
 ### 步骤 6: 构建 GROUP BY
@@ -158,16 +152,16 @@ ON
 1. 包含所有维度字段
 2. 不包含聚合字段
 
-**示例**:
+**结构**:
 ```sql
 GROUP BY 
-    date,
-    register_channel
+    <dimension_expr_1>,
+    <dimension_expr_2>
 ```
 
 **注意**:
-- GROUP BY 的字段必须在 SELECT 中（或在聚合函数中）
-- 注意数据库的 GROUP BY 语法差异
+- GROUP BY 的字段必须与 SELECT 中的非聚合字段完全一致
+- 使用字段表达式或字段别名都可以，但在同一份 SQL 中保持一致风格
 
 ### 步骤 7: 构建 ORDER BY
 
@@ -176,34 +170,34 @@ GROUP BY
 2. 指标通常降序（DESC）
 3. 多个排序字段注意优先级
 
-**示例**:
+**结构**:
 ```sql
 ORDER BY 
-    date ASC,           -- 时间升序
-    dau DESC            -- 指标降序
+    <time_dimension> ASC,
+    <metric_alias> DESC
 ```
 
 ### 步骤 8: 添加注释
 
 **原则**:
-1. 为整个 SQL 添加总体说明
-2. 为 CTE 添加说明
-3. 为复杂逻辑添加说明
+1. 为整个 SQL 添加总体说明（指标 + 时间范围 + 分组维度）
+2. 为 CTE 添加说明（这个 CTE 做了什么）
+3. 为复杂逻辑添加说明（比值计算、窗口函数等）
 4. 不要为显而易见的代码添加注释
 
-**示例**:
+**结构**:
 ```sql
--- 计算 2024 年 1 月新用户的次日留存率，按注册渠道分组
+-- <指标名>，<时间范围>，按 <维度> 分组
 
-WITH new_users AS (
-    -- 获取 1 月份的新注册用户
+WITH <cte_1> AS (
+    -- <cte_1 的业务含义>
     SELECT ...
 ),
-retention_users AS (
-    -- 获取次日活跃的用户
+<cte_2> AS (
+    -- <cte_2 的业务含义>
     SELECT ...
 )
--- 主查询：计算留存率
+-- 主查询：<做什么>
 SELECT ...
 ```
 
@@ -221,7 +215,7 @@ SELECT ...
 [SQL 代码]
 ```
 
-## 技术方案说明
+## 技术方案
 
 - **使用的表**: [表名] - [选择理由]
 - **关联方式**: [关联说明]
@@ -242,84 +236,76 @@ SELECT ...
 
 ---
 
-## 示例
+## 生成模板
 
-### 示例 1: 简单查询
+> 下列结构是各 Pattern 的 SQL 骨架，真实使用时 `<...>` 占位由步骤 1-3 检索到的语义展开填充。具体指标如何落地请参考 `knowledge/metrics/` 下的 yaml 与 `knowledge/patterns/` 下的 `example_usage` 段。
 
-**需求**: 查询昨天的 DAU
+### 骨架 1: count_distinct（去重计数）
 
-**生成过程**:
-1. Pattern: `count_distinct`，参数: entity=user, event=active_behavior, time_window=昨天
-2. 语义展开: primary_key=user_id, source_table=dwd_user_behavior
-3. 时间展开: `date = date_add('day', -1, current_date)`（Trino 语法）
-4. 可优化：改用汇总表 dws_user_daily（is_active=1），性能更好
-
-**生成的 SQL**:
 ```sql
--- 查询昨天的 DAU（使用汇总表，性能好）
+-- <指标名>，<时间范围>，按 <维度> 分组
+
 SELECT 
-    date,
-    COUNT(DISTINCT user_id) AS dau
-FROM 
-    dws_user_daily
-WHERE 
-    date = date_add('day', -1, current_date)
-    AND is_active = 1
-GROUP BY 
-    date;
+    <group_by.sql_expr>,
+    COUNT(DISTINCT <entity.primary_key>) AS <metric_alias>
+FROM <event.source_table>
+WHERE <partition_field> <时间过滤>
+  AND <event.type_condition>                                -- 如有
+  AND <where_dimension_values.sql_expr = value>             -- 如有
+  AND <where_named_values.sql_condition>                    -- 如有
+GROUP BY <group_by.sql_expr>;
 ```
 
-### 示例 2: 复杂查询
+### 骨架 2: cohort_retention（队列留存）
 
-**需求**: 计算 1 月份新用户的次日留存率，按渠道分
-
-**生成过程**:
-1. Pattern: `cohort_retention`，参数: entity=user, cohort_event=registration, retain_event=active_behavior, offset_days=1, group_by=user_register_channel
-2. 展开模板：cohort 表 = dwd_user_register，retain 表 = dwd_user_behavior
-3. group_by 展开：register_channel 来自 dwd_user_register，已在 cohort CTE 中，无需额外 JOIN
-
-**生成的 SQL**:
 ```sql
--- 计算 2024 年 1 月新用户的次日留存率，按注册渠道分组
+-- <基准事件> 后 <offset_days> 天的留存率，按 <维度> 分组
 
 WITH cohort AS (
-    -- 基准：1 月份新注册用户
+    -- 基准队列：cohort_date 这天触发了 cohort_event 的实体及 D0 日期
     SELECT 
-        user_id,
-        register_date,
-        register_channel
-    FROM 
-        dwd_user_register
-    WHERE 
-        register_date >= DATE '2024-01-01'
-        AND register_date < DATE '2024-02-01'
+        <entity.primary_key>,
+        <cohort_event.date_field> AS cohort_date,
+        <group_by.sql_expr>            -- 如果分组维度在 cohort 表中
+    FROM <cohort_event.source_table>
+    WHERE <cohort_date>                -- 参数 cohort_date 展开的 SQL 条件
+      AND <partition_field> <时间过滤>
 ),
 retained AS (
-    -- 留存：在注册后第 1 天有活跃行为
-    SELECT DISTINCT b.user_id
-    FROM 
-        dwd_user_behavior b
-    JOIN cohort c ON b.user_id = c.user_id
-    WHERE 
-        b.date = date_add('day', 1, c.register_date)
+    -- 留存判定：D+N 天仍活跃 / 再次触发 retain_event
+    SELECT DISTINCT <entity.primary_key>
+    FROM <retain_event.source_table OR entity.anchor_tables[<key>]>
+    WHERE <retain_event.type_condition>  -- 如有
+      AND <retain_where_dimension_values.sql_expr = value>  -- 如有
+      AND <retain_where_named_values.sql_condition>         -- 如有
+      AND date IN (SELECT date_add('day', <offset_days>, cohort_date) FROM cohort)
 )
 SELECT 
-    c.register_date,
-    c.register_channel,
-    COUNT(DISTINCT c.user_id)                                         AS cohort_size,
-    COUNT(DISTINCT r.user_id)                                         AS retained_count,
-    ROUND(COUNT(DISTINCT r.user_id) * 100.0
-        / NULLIF(COUNT(DISTINCT c.user_id), 0), 2)                   AS retention_rate
-FROM 
-    cohort c
-LEFT JOIN 
-    retained r ON c.user_id = r.user_id
-GROUP BY 
-    c.register_date,
-    c.register_channel
-ORDER BY 
-    c.register_date,
-    c.register_channel;
+    <group_by.sql_expr>,
+    COUNT(DISTINCT c.<entity.primary_key>)                          AS cohort_size,
+    COUNT(DISTINCT r.<entity.primary_key>)                          AS retained_count,
+    ROUND(COUNT(DISTINCT r.<entity.primary_key>) * 100.0
+        / NULLIF(COUNT(DISTINCT c.<entity.primary_key>), 0), 2)    AS retention_rate
+FROM cohort c
+LEFT JOIN retained r USING (<entity.primary_key>)
+GROUP BY <group_by.sql_expr>
+ORDER BY <group_by.sql_expr>;
+```
+
+### 骨架 3: sum_metric（聚合求和）
+
+```sql
+-- <指标名>，<时间范围>，按 <维度> 分组
+
+SELECT 
+    <group_by.sql_expr>,
+    SUM(<sum_field>) AS <metric_alias>
+FROM <event.source_table | entity.anchor_tables[<key>]>     -- 事件型 / 快照型二选一
+WHERE <partition_field> <时间过滤>
+  AND <event.type_condition>                                -- 事件型时展开
+  AND <where_dimension_values.sql_expr = value>             -- 如有
+  AND <where_named_values.sql_condition>                    -- 如有
+GROUP BY <group_by.sql_expr>;
 ```
 
 ---
@@ -330,14 +316,14 @@ ORDER BY
 
 **错误示例**:
 ```sql
--- ❌ 错误：自己定义了 DAU 的计算方式
-SELECT COUNT(user_id) as dau  -- 没有去重
+-- ❌ 错误：对去重类指标忘记加 DISTINCT
+SELECT COUNT(<entity.primary_key>) AS <metric_alias>
 ```
 
 **正确示例**:
 ```sql
--- ✅ 正确：按照业务定义
-SELECT COUNT(DISTINCT user_id) as dau  -- 去重
+-- ✅ 正确：按 pattern 定义（count_distinct 要求 DISTINCT）
+SELECT COUNT(DISTINCT <entity.primary_key>) AS <metric_alias>
 ```
 
 ### 2. 遵循 SQL 最佳实践
@@ -401,3 +387,4 @@ SELECT COUNT(DISTINCT user_id) as dau  -- 去重
 | 日期 | 修改人 | 修改内容 |
 |------|--------|----------|
 | 2024-01-01 | AI | 创建文档 |
+| 2026-04-20 | AI | cohort_retention 骨架参数统一为 cohort_event/retain_event/cohort_date；count_distinct 与 sum_metric 骨架将 filter_by 拆为 event+where_named_values+where_dimension_values；结果输出小节标题统一为"技术方案" |

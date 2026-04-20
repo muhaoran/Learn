@@ -1,0 +1,27 @@
+dimension_id: "ic_type"
+name: "主理人类型"
+entity: "fund_product"
+description: "组合/投顾类产品的主理人类型分类（有知有行/银行螺丝钉/7分钟理财/其他大V/机构/品类投顾）"
+
+aliases:
+  - "主理人"
+  - "主理人类型"
+  - "投顾类型"
+
+source_table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+join_key: "pro_code"
+sql_expr: "ic_type"
+
+known_values:
+  - value: "有知有行投顾"
+    name: "有知有行投顾"
+  - value: "银行螺丝钉投顾"
+    name: "银行螺丝钉投顾"
+  - value: "7分钟理财投顾"
+    name: "7分钟理财投顾"
+  - value: "其他大V投顾"
+    name: "其他大V投顾"
+  - value: "机构投顾"
+    name: "机构投顾"
+  - value: "品类投顾"
+    name: "品类投顾"

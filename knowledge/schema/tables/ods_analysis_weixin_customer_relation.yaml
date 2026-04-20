@@ -15,6 +15,7 @@ primary_key: []
 columns: []
 
 notes:
+  - "字段定义待补充：columns 与 primary_key 为空，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
   - "列信息待补充：该表在 PDF 中仅以表名出现，具体字段需从实际数据或研发文档补充"
   - "建联渠道分析时，与 fundx_dim.dim_dic_juzi_channel_info_a 关联获取渠道名称（state 字段匹配）"
   - "如需按渠道分组的汇总数据，优先使用 fundx_ads.ads_prodept_evt_weixin_relation_channel_group_s"

@@ -1,12 +1,13 @@
-dimension_id: "fund_account_type"
+dimension_id: "invest_account_code"
 name: "子账户类型"
 entity: "user"
-description: "用户在公募体系下的投资子账户类型"
+description: "用户投资子账户的类型代码，用于区分三分法、默认账户、有知有行、用户自定义。挂在持仓表上；订单表也有同名字段"
 
 aliases:
   - "子账户"
+  - "子账户类型"
   - "账户类型"
-  - "invest_account_code"
+  - "TRICHOTOMY"
 
 source_table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
 join_key: "uid"
@@ -16,8 +17,8 @@ known_values:
   - value: "TRICHOTOMY"
     name: "三分法子账户"
   - value: "CUSTOM"
-    name: "自定义子账户"
+    name: "用户自定义子账户"
   - value: "YZYX"
     name: "有知有行子账户"
   - value: "DEFAULT"
-    name: "默认子账户"
+    name: "默认账户"

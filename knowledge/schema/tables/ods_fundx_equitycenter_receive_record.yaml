@@ -1,0 +1,19 @@
+table_id: "ods_fundx_equitycenter_receive_record"
+name: "权益中心礼品领取记录表"
+full_name: "fundx_ods.ods_fundx_equitycenter_receive_record_s"
+layer: ODS
+description: "记录私域权益中心的礼品领取明细，用于分析建联用户的权益发放与领取情况"
+
+storage:
+  partition_field: "dt"
+  update_frequency: "每日"
+  data_range: "历史全量"
+  retention: "永久保留"
+
+primary_key: []
+
+columns: []
+
+notes:
+  - "字段定义待补充：PDF 中仅出现表名（2.5 礼品领取），columns 与 primary_key 为空，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
+  - "常见业务场景：查询特定活动礼品的领取人数、领取时间分布、与建联/交易行为的关联分析。"

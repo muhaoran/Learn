@@ -31,11 +31,9 @@
 |------|------|------|
 | [01_business_knowledge_design.md](01_business_knowledge_design.md) | 业务知识层设计逻辑（初版四层方案）| ⚠️ 已作废，请看 02 |
 | [02_composable_knowledge_architecture.md](02_composable_knowledge_architecture.md) | 可组合知识架构（解决维护成本问题的重构方案） | ✅ 完成 |
-| 03_knowledge_retrieval_design.md | 知识检索策略设计 | ⏳ 待创建 |
-| 04_sql_generation_design.md | SQL 生成策略设计 | ⏳ 待创建 |
-| 05_clarification_strategy_design.md | 需求澄清策略设计 | ⏳ 待创建 |
-| 06_validation_design.md | 验证机制设计 | ⏳ 待创建 |
-| 07_feedback_loop_design.md | 反馈闭环设计 | ⏳ 待创建 |
+| [03_cursorrules_design.md](03_cursorrules_design.md) | `.cursorrules` 的设计原则与执行版对齐要求 | ✅ 完成 |
+
+> 关于知识检索 / SQL 生成 / 需求澄清 / 验证 / 反馈闭环等执行性内容，见项目根目录下的 [../skills/](../skills/) 目录，不在本设计哲学文件夹中重复。
 
 ---
 
@@ -106,7 +104,7 @@
 1. **核心理念** - 这个模块的设计初衷
 2. **内在逻辑** - 各部分如何协同工作
 3. **设计决策** - 为什么这样设计而不是那样
-4. **实际案例** - 用例子说明设计思路
+4. **结构示例** - 用占位符或真实业务场景说明设计思路（避免虚构业务案例）
 5. **优缺点分析** - 当前设计的优势和不足
 6. **改进方向** - 未来可以如何优化
 
@@ -118,7 +116,7 @@
 
 **核心决策**:
 1. ✅ 采用知识驱动架构
-2. ✅ 三层知识体系（业务、数据、案例）
+2. ✅ 四层可组合知识架构（schema / semantics / patterns / metrics）
 3. ✅ 标准化的模板设计
 4. ✅ 明确使用 Trino 语法
 5. ✅ 原始知识自动处理
@@ -237,8 +235,8 @@
 ## 四、设计决策
 [为什么这样设计而不是那样]
 
-## 五、实际案例
-[用例子说明设计思路]
+## 五、结构示例
+[用占位符或真实业务场景说明设计思路；避免编造不存在的业务示例]
 
 ## 六、优缺点分析
 [当前设计的优势和不足]

@@ -1,40 +1,43 @@
 # 知识缺口记录
 
 - **日期**：[YYYY-MM-DD]
+- **缺失类型**：数据表/字段 / 业务实体 / 业务过程 / 维度 / 计算模式 / 指标口径
 - **优先级**：高 / 中 / 低
-- **状态**：待补充 / 处理中 / 已完成
+- **状态**：待处理 / 处理中 / 已完成
 
 ---
 
-## 缺失的知识
-
-**类型**（选一）：
-
-- [ ] 数据表 / 字段信息 → 补充到 `knowledge/schema/tables/`
-- [ ] 业务实体定义（用户/帖子/订单…）→ `knowledge/semantics/entities/`
-- [ ] 业务过程定义（注册/活跃/发帖…）→ `knowledge/semantics/events/`
-- [ ] 维度或命名标签 → `knowledge/semantics/dimensions/`
-- [ ] 可复用计算逻辑 → `knowledge/patterns/`
-- [ ] 指标口径 → `knowledge/metrics/`
-
-**具体缺失内容**：
-
-[缺失的是什么，需要什么信息才能补充]
-
----
-
-## 触发需求
+## 原始需求
 
 ```
 [导致发现此缺口的用户需求]
 ```
 
+## 缺失内容描述
+
+[缺失的是什么，需要什么信息才能补充；当前 AI 给出的临时回应或拒答理由]
+
 ---
 
-## 补充计划
+## 缺失分类
+
+**类型**（可多选）：
+
+- [ ] 数据表 / 字段信息 → 补充到 `knowledge/schema/tables/`
+- [ ] 业务实体定义 → `knowledge/semantics/entities/`
+- [ ] 业务过程定义 → `knowledge/semantics/events/`
+- [ ] 维度或命名标签 → `knowledge/semantics/dimensions/`
+- [ ] 可复用计算逻辑 → `knowledge/patterns/`
+- [ ] 指标口径 → `knowledge/metrics/`
+- [ ] 其他：[说明]
+
+---
+
+## 后续计划
 
 - **负责人**：[姓名]
-- **计划完成**：[日期]
+- **计划完成**：[YYYY-MM-DD]
+- **关联知识库文件**：[预计新增/修改的路径]
 - **临时处理方式**：[在补充前如何临时应对此类需求]
 
 ## 完成情况

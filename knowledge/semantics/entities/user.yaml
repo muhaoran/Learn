@@ -1,14 +1,21 @@
 entity_id: "user"
-name: "用户"
-description: "在平台完成注册的账户主体，是绝大多数用户行为指标的统计对象"
+name: "蛋卷用户"
+description: "公募业务中的用户主体，以蛋卷用户 ID（dj_uid）为统一身份，COUNT DISTINCT 时优先使用 dj_uid"
 
-primary_key: "user_id"
+primary_key: "dj_uid"
+
+id_aliases:
+  - "uid"            # 多数交易/持仓/注册/定投表使用的蛋卷 uid 字段名
+  - "dj_uid"         # 私域表里与蛋卷用户挂钩时使用的字段名
+
 anchor_tables:
-  holding: "dwd_ast_pub_daily_holding_detail_i"   # 持仓快照表，持仓类指标（如 AUM）的 FROM 起点
+  register_source: "data_product.product_fund_uid_register_source_cleaning_s"
+  dmp_attribute: "data_center.center_user_dj_offline_attribute_s"
+  base_info: "fundx_dwd.dwd_pat_user_info_s"
 
 aliases:
   - "用户"
-  - "账号"
-  - "雪友"
-  - "user"
-  - "account"
+  - "蛋卷用户"
+  - "dj_uid"
+  - "uid"
+  - "客户"

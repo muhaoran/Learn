@@ -12,10 +12,10 @@
 
 Pattern 不是具体指标，而是**计算方式**的抽象。
 
-- `count_distinct` → 去重计数（DAU、MAU、发帖用户数、近N日活跃… 都是这个模式；滚动窗口通过 `time_window.window_days` 参数指定）
-- `sum_metric` → 求和类指标（交易额、发帖数… 都是这个模式；同样支持滚动窗口）
-- `cohort_retention` → 同期群留存（D1留存、D7留存… 都是这个模式）
-- 比值类指标（转化率、渗透率…）不单独成模式：分子分母各走一次 `count_distinct` 或 `sum_metric`，同表内联计算，跨表用 CTE
+- `count_distinct` → **去重计数类**：对某实体主键做 `COUNT(DISTINCT ...)`；固定日期 / 滚动窗口（通过 `time_window.window_days`）皆可
+- `sum_metric` → **聚合求和类**：对某度量字段做 `SUM(...)`；事件流 / 快照均支持；同样支持滚动窗口
+- `cohort_retention` → **队列留存类**：以 D0 基准事件定义队列，判定队列成员在 D+N 是否触发留存事件
+- **比值类指标**不单独成模式：分子分母各走一次 `count_distinct` 或 `sum_metric`，同表可内联、跨表用 CTE，除法必须 `NULLIF(denominator, 0)`
 
 ---
 

@@ -1,0 +1,24 @@
+dimension_id: "private_domain_flag"
+name: "私域用户标识"
+entity: "user"
+description: "用户在私域体系中的身份标签，区分建联用户、私域渠道注册用户、两者兼有、以及非私域"
+
+aliases:
+  - "私域标识"
+  - "私域标签"
+  - "是否私域"
+  - "建联标识"
+
+source_table: "fundx_dwd.dwd_ast_pub_daily_holding_detail_i"
+join_key: "uid"
+sql_expr: "private_domain_flag"
+
+known_values:
+  - value: "0"
+    name: "其他（非私域）"
+  - value: "1"
+    name: "建联用户"
+  - value: "2"
+    name: "私域渠道注册用户"
+  - value: "3"
+    name: "建联且私域渠道注册用户"

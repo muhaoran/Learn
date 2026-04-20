@@ -8,11 +8,11 @@
 
 ### 当前设计的核心矛盾
 
-现有 `01_business_knowledge_design.md` 的四层架构（术语→维度→指标→计算规则）在理念上是对的，但在信息组织方式上存在一个根本问题：
+旧版四层架构（术语→维度→指标→计算规则）在理念上是对的，但在信息组织方式上存在一个根本问题：
 
 **它把「组合结果」当成了知识单元。**
 
-每新增一个指标（如「付费用户 7 日留存」），就需要写一份完整文档，重新描述一遍大量在其他指标里已经写过的信息（活跃用户定义、时间计算方式、JOIN 逻辑……）。
+每新增一个指标（如「私域客户 7 日内首购率」），就需要写一份完整文档，重新描述一遍大量在其他指标里已经写过的信息（首购定义、时间计算方式、JOIN 逻辑……）。
 
 这导致：
 
@@ -60,17 +60,19 @@
 **维护方**：数仓工程师，理论上可从 Metastore 自动生成，人工维护量极低。
 
 ```yaml
-table: dws_user_daily
-partition: date
-granularity: user × day
+table: fundx_dwd.dwd_evt_parent_money_order_s
+partition: dt
+granularity: 一行 = 一笔父单
 columns:
-  user_id: bigint
-  date: date
-  is_active: boolean
-  channel: string
+  uid: bigint
+  batch_order_serial_no: string
+  init_time: string         # 下单时间（字符串）
+  init_amount: decimal
+  flavor: string            # 交易渠道编码
+  trade_mode: string        # 交易模式（申购/认购/定投…）
 ```
 
-**边界**：只说「字段叫什么」，不说「哪些字段的组合叫活跃」。
+**边界**：只说「字段叫什么」，不说「哪种 trade_mode 组合叫主动买入」。
 
 ---
 
@@ -96,35 +98,37 @@ columns:
 - 只定义实体的**业务身份**（是什么）和**主键**（怎么唯一标识）
 - 不定义属性（属于 维度（Dimension）），不定义行为（属于 业务过程（Event））
 - 实体的属性往往分散在多张表里，每个维度（B2）自己声明来自哪张表、如何 JOIN——实体不需要也无法枚举所有属性表
-- `anchor_table` 是可选的：如果存在一张「一行对应一个实体」的宽表或 dim 表，标注为推荐的 JOIN 起点；如果没有，留空即可
+- `anchor_tables` 是可选的字典：key 自定义命名（如 `profile` / `holding`），value 为对应宽表；指标通过 `anchor_table: <key>` 引用其中一张。没有宽表时留空即可
 
 ```yaml
-entity_id: user
-name: 用户
-description: 在平台完成注册的账户主体，是大多数用户行为指标的统计对象
-primary_key: user_id              # 规范主键字段名，COUNT DISTINCT 时优先使用
-id_aliases: [uid, account_id]     # 可选：不同表中主键字段名不一致时列出等价字段名
-anchor_table: dim_user            # 可选：如果有宽表，作为 JOIN 推荐起点
-aliases: [用户, 账号, 雪友, user]
-# 用户属性（渠道、等级、新老类型等）分散在多张表，由各维度定义自行声明
+entity_id: customer
+name: 蛋卷客户
+description: 在蛋卷完成开户的账户主体，是大多数交易/触达指标的统计对象
+primary_key: uid                   # 规范主键字段名，COUNT DISTINCT 时优先使用
+id_aliases: [dj_uid]               # 可选：不同表中主键字段名不一致时列出等价字段名
+anchor_tables:                     # 可选：按用途命名的宽表字典，指标用 anchor_table: <key> 引用
+  profile: fundx_dwd.dwd_pat_user_info_s
+aliases: [客户, 蛋卷用户, 蛋卷 uid, uid]
+# 客户属性（开户渠道、私域标签、所属小雪等）分散在多张表，由各维度定义自行声明
 ```
 
 ```yaml
-entity_id: post
-name: 帖子
-description: 用户在平台发布的内容单元，包括帖子、文章
-primary_key: post_id
-anchor_table: dim_post
-aliases: [帖子, 内容, 文章, post]
+entity_id: fund_product
+name: 基金/组合产品
+description: 蛋卷上架销售的公募基金或投顾组合产品
+primary_key: pro_code
+anchor_tables:
+  base: fundx_dwd.dwd_pro_stock_base_info_s
+aliases: [产品, 基金, 组合, pro_code]
 ```
 
 ```yaml
-entity_id: order
-name: 交易订单
-description: 用户发起的一笔交易行为记录
-primary_key: order_id
-# anchor_table 留空：订单属性分散在多张事实表，无统一宽表
-aliases: [订单, 交易, order]
+entity_id: fund_order
+name: 公募买入父单
+description: 客户发起的一笔公募买入父单（含申购/认购/定投等多种 trade_mode）
+primary_key: batch_order_serial_no
+# anchor_table 留空：父单属性分散在多张事实表，无统一宽表
+aliases: [父单, 买入订单, 申购单, order]
 ```
 
 ---
@@ -135,38 +139,39 @@ aliases: [订单, 交易, order]
 
 **边界规则**：
 - 业务过程（Event） 只回答「这个业务过程对应哪张表的哪些行」，**不加任何业务属性过滤条件**
-- 如果一张表只存一种事件（如 `dwd_user_register` 专存注册），直接指向表即可，不需要任何条件
-- 如果多种事件共存一张表（如 `dwd_user_behavior` 存了所有行为），才需要 `event_type = 'login'` 这样的**类型识别条件**——这是区分「哪种事件」的标识，不是业务属性的过滤
-- 像 `register_status = 'completed'` 这类**属性过滤**不属于 业务过程（Event），应作为 维度（Dimension）的命名取值
+- 如果一张表只存一种事件（如开户清洗表专存开户），直接指向表即可，不需要任何条件
+- 如果多种事件共存一张表（如父单表存了申购/认购/定投/转换多种 trade_mode），才需要 `trade_mode IN (...)` 这样的**类型识别条件**——这是区分「哪种事件」的标识，不是业务属性的过滤
+- 像 `order_status = 'success'` 这类**属性过滤**不属于 业务过程（Event），应作为 维度（Dimension）的命名取值
 
 ```yaml
 # 专用表：直接指向表，无需条件
-event_id: registration
-name: 用户注册
-entity: user                      # 这个事件发生在哪个实体上
-description: 用户发起注册这一业务过程（不区分结果状态）
-source_table: dwd_user_register
-aliases: [注册, 新注册]
+event_id: account_open
+name: 客户开户
+entity: customer                  # 这个事件发生在哪个实体上
+description: 客户在蛋卷完成开户这一业务过程（不区分后续是否实际交易）
+source_table: data_product.product_fund_uid_register_source_cleaning_s
+aliases: [开户, 注册, 新开户]
 ```
 
 ```yaml
 # 多事件共存表：需要类型识别条件区分不同业务过程
-event_id: active_behavior
-name: 有效活跃行为
-entity: user
-description: 用户发生了被认定为活跃的行为（多种行为类型的业务集合定义）
-source_table: dwd_user_behavior
-type_condition: event_type IN ('login','view','post','comment','like','trade')
-aliases: [活跃, 有行为, active]
+event_id: place_fund_order
+name: 公募主动买入
+entity: customer
+description: 客户在父单表中发生主动买入类下单（申购/认购等，不含定投自动扣款）
+source_table: fundx_dwd.dwd_evt_parent_money_order_s
+type_condition: trade_mode IN ('apply','subscribe')
+aliases: [买入, 下单, 主动申购]
 ```
 
 ```yaml
-event_id: post_publish
-name: 发帖
-entity: post
-description: 用户发布一篇帖子这一业务过程
-source_table: dwd_post_publish
-aliases: [发帖, 发文章, 发布内容]
+event_id: wechat_sop_reach
+name: 企微 SOP 触达
+entity: customer
+description: 公募小雪 SOP 节点向客户成功发送一条触达消息
+source_table: fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans
+type_condition: status = 'success'
+aliases: [触达, SOP 发送, 推送]
 ```
 
 ---
@@ -176,10 +181,10 @@ aliases: [发帖, 发文章, 发布内容]
 实体的业务属性，是语义层的**原材料**。对应 OneData 的「维度」。
 
 **边界规则**：
-- **绑定实体，不绑定事件**：`channel` 是「用户」实体的属性，不是「注册事件」独有的。绑到实体后，所有涉及用户的指标都能使用，无需重复定义
+- **绑定实体，不绑定事件**：`flavor`（开户渠道）是「客户」实体的属性，不是「开户事件」独有的。绑到实体后，所有涉及客户的指标都能使用，无需重复定义
 - **只定义属性本身，不预设用法**：是做过滤（WHERE）还是分组（GROUP BY），由 指标目录（Metric） 指标配方在组合时决定，不在维度定义里写
-- **维度值必须是有限离散的分类值**：连续值（如资产金额、天数）不是维度，如需分组须先 CASE WHEN 分桶，分桶结果才是维度值
-- **枚举值按需维护**：高基数字段（如渠道有上百个值）无需列举，AI 直接推断。低基数枚举字段若每个值有独立业务含义，用 `known_values` 记录，帮助 AI 翻译自然语言（如「iOS用户」→ `WHERE platform = 'iOS'`）
+- **维度值必须是有限离散的分类值**：连续值（如下单金额、持仓天数）不是维度，如需分组须先 CASE WHEN 分桶，分桶结果才是维度值
+- **枚举值按需维护**：高基数字段（如开户渠道有上百个 flavor 值）无需列举，AI 直接推断。低基数枚举字段若每个值有独立业务含义，用 `known_values` 记录，帮助 AI 翻译自然语言（如「外部渠道客户」→ `WHERE flavor_type = 'external'`）
 - **`source_table` 的适用范围**：仅用于有 `sql_expr` 的实体属性维度（告诉 AI 去哪张表取字段）。若维度只有 `named_values` 子查询，`sql_condition` 本身已包含表信息，顶层不需要声明 `source_table`
 - **维度的两种场景**：① **实体属性**（有 `sql_expr`，值可从表中直接读取或 CASE WHEN 计算，`named_values` 可选，用于某些取值需要显式 SQL 条件时）；② **计算属性**（无 `sql_expr`，值无法从字段直接读取，用自包含子查询的 `named_values` 定义每个取值的归属条件，AI 直接使用不推导）
 - **参数化原则**：若命名取值存在「同一模式、不同参数值」的变体（如 7天/14天/30天），必须用 `parameters` 参数化，在 指标目录（Metric）配方里传入具体值——逐一枚举等于在业务语义（Semantics）中重新制造维护爆炸
@@ -188,13 +193,13 @@ aliases: [发帖, 发文章, 发布内容]
 # 类型一：简单维度，只需定义属性和来源，不需要枚举值，带语义标注的数据字典
 #数据字典（Schema）由数仓工程师维护，关注表结构
 #业务语义（Semantics）由业务/分析师维护，关注语义
-dimension_id: channel
-name: 注册渠道
-entity: user                        # 描述哪个实体
-sql_expr: channel
-source_table: dwd_user_register
-join_key: user_id                   # 与实体主键的关联方式
-aliases: [渠道, 来源渠道]
+dimension_id: open_channel
+name: 开户渠道
+entity: customer                    # 描述哪个实体
+sql_expr: flavor
+source_table: data_product.product_fund_uid_register_source_cleaning_s
+join_key: uid                       # 与实体主键的关联方式
+aliases: [渠道, 开户渠道, flavor]
 ```
 
 > **设计决策备注**：简单维度与数据字典（Schema）存在重叠——字段名、表名、关联键在数据字典（Schema）里已有。业务语义（Semantics）中的简单维度额外增加的只有三项：业务名称、实体归属、别名（用于自然语言理解）。
@@ -203,24 +208,27 @@ aliases: [渠道, 来源渠道]
 
 ```yaml
 # 实体属性（CASE WHEN）：将原始字段分桶为离散分类值，用 known_values 记录枚举含义
-# AI 看到 known_values 后，自动将"移动端用户"翻译为 WHERE sql_expr = '移动端'
-dimension_id: user_platform_type
-name: 客户端类型
-entity: user
+# AI 看到 known_values 后，自动将"外部渠道客户"翻译为 WHERE sql_expr = '外部'
+dimension_id: open_channel_type
+name: 开户渠道大类
+entity: customer
 sql_expr: >
   CASE
-    WHEN platform IN ('iOS', 'Android') THEN '移动端'
-    ELSE 'PC端'
+    WHEN flavor_type IN ('external') THEN '外部'
+    WHEN flavor_type IN ('internal') THEN '内部'
+    ELSE '自然流量'
   END
-source_table: dwd_user_behavior
-join_key: user_id
-aliases: [平台类型, 端]
+source_table: data_product.product_fund_uid_register_source_cleaning_s
+join_key: uid
+aliases: [渠道大类, 渠道类型]
 
 known_values:
-  - value: "移动端"
-    name: "移动端"
-  - value: "PC端"
-    name: "PC端"
+  - value: "外部"
+    name: "外部渠道"
+  - value: "内部"
+    name: "内部渠道"
+  - value: "自然流量"
+    name: "自然流量"
 ```
 
 ```yaml
@@ -230,35 +238,35 @@ known_values:
 #
 # 重要：如果命名取值存在「同一模式、不同参数」的变体（如7天/14天/30天），
 # 必须参数化，不能逐一枚举——枚举等于重新制造维护爆炸问题
-dimension_id: user_computed_tags
-name: 用户计算标签
-entity: user
+dimension_id: customer_computed_tags
+name: 客户计算标签
+entity: customer
 
 named_values:
-  - value_id: active_user
-    name: 活跃用户
-    depends_on_events: [active_behavior]
+  - value_id: daily_buyer
+    name: 当日下单客户
+    depends_on_events: [place_fund_order]
     sql_condition: >
-      user_id IN (
-        SELECT user_id FROM dwd_user_behavior
-        WHERE date = ${target_date}
+      uid IN (
+        SELECT uid FROM fundx_dwd.dwd_evt_parent_money_order_s
+        WHERE dt = ${target_date}
       )
-    aliases: [活跃, AU]
+    aliases: [当日买入, 日活跃下单]
 
   - value_id: first_purchase_within_n_days
-    name: 注册后N天内首购用户
+    name: 开户后N天内首购客户
     parameters:
-      n: {type: integer, description: 注册后的天数窗口}
-    depends_on_events: [registration]
+      n: {type: integer, description: 开户后的天数窗口}
+    depends_on_events: [account_open]
     sql_condition: >
-      user_id IN (
-        SELECT r.user_id
-        FROM dwd_user_register r
-        JOIN dwd_trade_order o
-          ON r.user_id = o.user_id
-         AND o.order_date >= r.register_date
-         AND o.order_date <= date_add('day', ${n}, r.register_date)
-        WHERE o.is_first_order = true
+      uid IN (
+        SELECT r.uid
+        FROM data_product.product_fund_uid_register_source_cleaning_s r
+        JOIN fundx_dwd.dwd_evt_parent_money_order_s o
+          ON r.uid = o.uid
+         AND substr(o.init_time, 1, 10) >= r.open_date
+         AND substr(o.init_time, 1, 10)
+             <= date_format(date_add('day', ${n}, date(r.open_date)), '%Y-%m-%d')
       )
     aliases: [N日首购]
 ```
@@ -269,9 +277,9 @@ named_values:
 
 | 类型 | 预估数量 | 说明 |
 |------|----------|------|
-| 实体（Entity） | 5–15 个 | user、post、order、comment… 数量少且稳定 |
-| 事件（Event） | 20–40 个 | 注册、登录、浏览、发帖、交易… |
-| 维度（Dimension） | 30–50 个 | 渠道、账龄类型、用户等级、内容品类… |
+| 实体（Entity） | 5–15 个 | 客户、基金产品、父单、定投计划、企微好友… 数量少且稳定 |
+| 事件（Event） | 20–40 个 | 开户、买入、定投执行、SOP 触达、建联、私聊… |
+| 维度（Dimension） | 30–50 个 | 开户渠道、产品大类、私域分群、SOP 业务线… |
 | 命名维度取值 | 20–50 个 | 仅限 SQL 为计算表达式的业务概念，简单字段取值不维护 |
 | **合计** | **~100 个** | 可穷尽、可维护 |
 
@@ -302,9 +310,11 @@ named_values:
 
 **把上表翻成一句话**：
 
-- `entity` 决定“按谁去重”（例如 `user_id`）。
+- `entity` 决定“按谁去重”（展开为该实体定义的主键字段，如 `uid`）。
 - `group_by` 用 `Dimension`（按属性轴分组）。
-- `filter_by` 用 `Event` 或“维度取值”（即 `NamedValue`）。
+- **过滤条件**在需求解析阶段可先抽象为一个"`filter_by`"概念；落到 Pattern 契约里，会展开为两个字段：
+  - `event`：限定统计范围对应的业务过程，展开为 `FROM <表>` 与 `WHERE <type_condition>`。
+  - `where_named_values` / `where_dimension_values`：对维度"命名取值"或"具体值"的过滤，展开为 `AND sql_condition` / `AND sql_expr = 'value'`。
 - `integer/date` 这类普通参数只负责“填模板空位”。
 
 ---
@@ -312,14 +322,22 @@ named_values:
 ```yaml
 pattern_id: count_distinct
 name: 去重计数
-description: 统计满足条件的去重实体数（如 DAU、新增用户数）
+description: 统计满足条件的去重实体数（如日下单客户数、新开户客户数）
 parameters:
   entity:
     type: Entity
     description: 统计哪类实体，决定 COUNT DISTINCT 使用哪个主键
-  filter_by:
-    type: Event | NamedValue
-    description: 谁被纳入统计，展开为 WHERE 条件
+  event:
+    type: Event
+    description: 统计范围对应的业务过程；展开为 FROM 表 + WHERE type_condition
+  where_named_values:
+    type: Dimension.NamedValue[]
+    required: false
+    description: 按命名分群过滤（多条取交集）
+  where_dimension_values:
+    type: list<{dimension_id, value}>
+    required: false
+    description: 按维度字段具体值过滤
   time_window:
     type: date_expression
     description: 时间范围（如 date = ${target_date}）
@@ -329,12 +347,14 @@ parameters:
     description: 可选分组维度，展开为 GROUP BY + SELECT 字段
 sql_template: |
   SELECT
-    ${group_by.sql_expr, ...}                       -- 展开分组字段（若有）
+    ${group_by.expr, ...}                       -- 展开分组字段（若有）
     COUNT(DISTINCT ${entity.primary_key}) AS cnt
-  FROM ${filter_by.source_table}
-  WHERE ${filter_by.sql_condition}
-    AND ${time_window}
-  ${GROUP BY group_by.sql_expr, ...}                -- 展开分组（若有）
+  FROM ${event.source_table}
+  WHERE ${time_window}
+    ${AND event.type_condition}
+    ${AND where_dimension_values.sql_expr = value, ...}
+    ${AND where_named_values.sql_condition, ...}
+  ${GROUP BY group_by.expr, ...}                -- 展开分组（若有）
 ```
 
 ---
@@ -346,16 +366,25 @@ description: 基准队列在 offset_days 天后的留存率
 parameters:
   entity:
     type: Entity
-    description: 统计主体（通常是 user）
-  base:
-    type: Event | NamedValue
-    description: D0 基准队列的筛选条件（如「注册」事件或「新用户」命名取值）
-  base_date_field:
-    type: string
-    description: D0 日期字段名（用于计算 D+N，如 register_date）
-  retain:
+    description: 统计主体（传入实体标识，展开为该实体的主键字段）
+  cohort_event:
     type: Event
-    description: D+N 留存判定行为（如 active_behavior）
+    description: D0 基准事件（定义同期群，如开户事件），决定基准表与基准日期字段
+  retain_event:
+    type: Event
+    required: false
+    description: D+N 留存判定事件（如 place_fund_order）；不填则默认从 entity 的 anchor_tables 取数
+  retain_where_named_values:
+    type: Dimension.NamedValue[]
+    required: false
+    description: 留存判断的命名分群过滤（多条取交集）
+  retain_where_dimension_values:
+    type: list<{dimension_id, value}>
+    required: false
+    description: 留存判断的维度取值过滤
+  cohort_date:
+    type: date_expr
+    description: 基准日期条件（如 open_date = '2024-01-01'）
   offset_days:
     type: integer
     description: 留存窗口天数（1=次日，7=7日）
@@ -364,48 +393,62 @@ parameters:
     required: false
     description: 可选分组维度
 sql_template: |
-  WITH base AS (
+  WITH cohort AS (
     SELECT
       ${entity.primary_key},
-      ${base_date_field} AS d0
-      ${, group_by.sql_expr ...}                    -- 展开分组字段（若有）
-    FROM ${base.source_table}
-    WHERE ${base.sql_condition}
+      ${cohort_event.date_field} AS cohort_date
+      ${, group_by.expr ...}                          -- 展开分组字段（若有）
+    FROM ${cohort_event.source_table}
+    WHERE ${cohort_date}
   ),
   retained AS (
-    SELECT DISTINCT b.${entity.primary_key}
-    FROM base b
-    JOIN ${retain.source_table} e
-      ON b.${entity.primary_key} = e.${entity.primary_key}
-     AND e.date = date_add('day', ${offset_days}, b.d0)
-    WHERE ${retain.type_condition}
+    SELECT DISTINCT ${entity.primary_key}
+    FROM ${retain_event.source_table OR entity.anchor_tables[<key>]}
+    WHERE ${AND retain_event.type_condition}
+      ${AND retain_where_*.sql_condition, ...}
+      AND date IN (SELECT date_add('day', ${offset_days}, cohort_date) FROM cohort)
   )
   SELECT
-    ${group_by.sql_expr, ...}
+    ${group_by.expr, ...}
     COUNT(DISTINCT r.${entity.primary_key}) * 1.0
-      / NULLIF(COUNT(DISTINCT b.${entity.primary_key}), 0) AS retention_rate
-  FROM base b
+      / NULLIF(COUNT(DISTINCT c.${entity.primary_key}), 0) AS retention_rate
+  FROM cohort c
   LEFT JOIN retained r USING (${entity.primary_key})
-  ${GROUP BY group_by.sql_expr, ...}
+  ${GROUP BY group_by.expr, ...}
 ```
+
+> 参数名历史：早期版本曾用 `base` / `retain` / `base_date_field`，已统一为 `cohort_event` / `retain_event` / `cohort_date`；以 [knowledge/patterns/cohort_retention.yaml](../knowledge/patterns/cohort_retention.yaml) 为唯一口径。
 
 ---
 
 ```yaml
 pattern_id: sum_metric
 name: 求和指标
-description: 对事件中的某个度量字段求和（如交易额、发帖数）
+description: 对事件中的某个度量字段求和（如下单金额、SOP 触达条数）
 parameters:
+  sum_field:
+    type: string
+    description: 求和的字段名（如 init_amount）
   event:
     type: Event
-    description: 度量来源事件
-  measure_field:
-    type: string
-    description: 求和的字段名（如 order_amount）
-  filter_by:
-    type: NamedValue
     required: false
-    description: 可选过滤条件
+    description: 事件型指标必填；快照型指标用 entity + anchor_table 代替
+  entity:
+    type: Entity
+    required: false
+    description: 快照型指标统计实体
+  anchor_table:
+    type: string (entity.anchor_tables 的 key)
+    required: false
+    description: 快照型指标使用的锚表 key
+  where_named_values:
+    type: Dimension.NamedValue[]
+    required: false
+    description: 按命名分群过滤
+  where_dimension_values:
+    type: list<{dimension_id, value}>
+    required: false
+    description: 按维度字段具体值过滤
   time_window:
     type: date_expression
     description: 时间范围
@@ -415,13 +458,14 @@ parameters:
     description: 可选分组维度
 sql_template: |
   SELECT
-    ${group_by.sql_expr, ...}
-    SUM(${measure_field}) AS total
-  FROM ${event.source_table}
-  WHERE ${event.type_condition}
-    AND ${filter_by.sql_condition}                  -- 若有 filter_by
-    AND ${time_window}
-  ${GROUP BY group_by.sql_expr, ...}
+    ${group_by.expr, ...}
+    SUM(${sum_field}) AS total
+  FROM ${event.source_table | entity.anchor_tables[anchor_table]}
+  WHERE ${time_window}
+    ${AND event.type_condition}
+    ${AND where_dimension_values.sql_expr = value, ...}
+    ${AND where_named_values.sql_condition, ...}
+  ${GROUP BY group_by.expr, ...}
 ```
 
 ---
@@ -430,13 +474,11 @@ sql_template: |
 
 | 模式 | 典型指标覆盖 |
 |------|------------|
-| count_distinct | DAU / MAU / 新增用户数 / 近N日活跃用户（滚动窗口）|
-| cohort_retention | 次日留存 / 7日留存 / N日留存 |
-| sum_metric | 交易额 / 发帖数 / 评论数 / 近N日求和（滚动窗口）|
-| 比值类（无独立模式）| 渗透率 / 转化率（分子分母各用 count_distinct/sum_metric 计算）|
-| funnel | 多步骤漏斗转化 |
-| period_over_period | 同比 / 环比 |
-| **合计 ~8–12 个** | **覆盖 90%+ 的业务指标** |
+| count_distinct | 日下单客户数 / 新开户客户数 / 近 N 日下单客户（滚动窗口）|
+| cohort_retention | 新客次月复购 / 7 日内首购 / 开户后 N 日复购 |
+| sum_metric | 下单金额 / SOP 成功触达条数 / 近 N 日求和（滚动窗口）|
+| 比值类（无独立模式）| SOP 触达后 7 日内首购率（分子分母各用 count_distinct / sum_metric 计算）|
+| **合计 ~8–12 个** | **覆盖大部分常见业务指标** |
 
 ---
 
@@ -461,30 +503,33 @@ sql_template: |
 **模式专属字段不是「不标准」，而是「按 pattern 的接口契约填参数」**——就像调用不同函数时入参不同，是正常设计。每个 pattern 在 计算模式（Pattern）里已声明了需要哪些参数及其类型，指标目录（Metric） 只是在调用。
 
 ```yaml
-metric_id: dau
-name: 日活跃用户数
+metric_id: daily_buying_customer
+name: 日下单客户数
 pattern: count_distinct
-entity: user                  # 实体（Entity）
-filter_by: active_user        # 维度（Dimension） 命名取值
-time_window: date = ${target_date}
+entity: customer              # 实体（Entity）
+event: fund_purchase          # 业务过程（Event）→ FROM + type_condition
+time_window: dt = ${target_date}
 ```
 
 ```yaml
-metric_id: d1_retention_new_user
-name: 新用户次日留存率
+metric_id: d1_repurchase_new_customer
+name: 新开户客户次日复购率
 pattern: cohort_retention
-entity: user
-base: new_user                # 维度（Dimension） 命名取值（注册后 ≤30 天）
-base_date_field: register_date
-retain: active_behavior       # 业务过程（Event）
+entity: customer
+cohort_event: customer_open   # 基准事件：开户
+cohort_date: open_date = ${target_date}
+retain_event: place_fund_order  # 留存事件
+retain_where_named_values:
+  - dimension_id: customer_lifecycle
+    value_id: new_customer    # 「新开户客户（开户后 ≤30 天）」命名分群
 offset_days: 1
 ```
 
 ```yaml
-metric_id: d1_retention_new_user_by_channel
-name: 新用户次日留存率（按渠道）
-extends: d1_retention_new_user
-group_by: [channel]           # 维度（Dimension）
+metric_id: d1_repurchase_new_customer_by_channel
+name: 新开户客户次日复购率（按开户渠道）
+extends: d1_repurchase_new_customer
+group_by: [open_channel]      # 维度（Dimension）
 ```
 
 **指标目录（Metric）的真正职责**：
@@ -495,7 +540,7 @@ group_by: [channel]           # 维度（Dimension）
 2. **计算方式有例外**，偏离通用模式
 3. **高频使用**，需要作为「标准答案」对齐上下文
 
-大多数临时查询（「付费用户 14 日留存按年龄段」），AI 可以直接从 业务语义 + 计算模式（Semantics + Pattern） 即时组合，**不需要在 指标目录（Metric）中预先定义**。
+大多数临时查询（「外部渠道客户 14 日复购按产品大类」），AI 可以直接从 业务语义 + 计算模式（Semantics + Pattern） 即时组合，**不需要在 指标目录（Metric）中预先定义**。
 
 ---
 
@@ -505,9 +550,9 @@ group_by: [channel]           # 维度（Dimension）
 
 | 边界 | 左侧说什么 | 右侧说什么 |
 |------|-----------|-----------|
-| 数据字典 ↔ 业务语义 | 「字段名叫 event_type，类型是 string」 | 「event_type IN (...) 这个组合是业务过程 active_behavior」 |
-| 数据字典 ↔ 业务语义 | 「表里有 channel 字段」 | 「channel 是 user 实体的维度，别名是渠道/来源渠道」 |
-| 数据字典 ↔ 业务语义 | 「dwd_user_register 有 user_id 主键」 | 「user_id 是实体 user 的 primary_key」 |
+| 数据字典 ↔ 业务语义 | 「字段名叫 trade_mode，类型是 string」 | 「trade_mode IN (...) 这个组合是业务过程 place_fund_order」 |
+| 数据字典 ↔ 业务语义 | 「表里有 flavor 字段」 | 「flavor 是 customer 实体的维度，别名是开户渠道」 |
+| 数据字典 ↔ 业务语义 | 「product_fund_uid_register_source_cleaning_s 有 uid 主键」 | 「uid 是实体 customer 的 primary_key」 |
 | 业务语义 ↔ 计算模式 | 「实体/业务过程/维度展开后是什么 SQL 条件」 | 「cohort_retention 模板怎么拼装这些条件」 |
 | 计算模式 ↔ 指标目录 | 通用参数化模板，不含任何业务 ID | 具体配方：指定 pattern + 填入实体/业务过程/维度的 ID |
 
@@ -517,9 +562,9 @@ group_by: [channel]           # 维度（Dimension）
 
 | 场景 | 现有方案 | 新方案 |
 |------|----------|--------|
-| 「活跃行为」口径变更 | 修改 glossary + metrics + calculation_rules（多处） | 修改 业务语义（Semantics）的 `active_behavior`（1处） |
-| 新增「30日留存」指标 | 新写一份完整文档 | 指标目录（Metric） 加一行 `offset_days: 30` |
-| 留存率公式逻辑调整 | 修改所有留存相关计算规则 | 修改 计算模式（Pattern）的 `cohort_retention` 模板（1处） |
+| 「主动买入」trade_mode 口径变更 | 修改多处文档（glossary + metrics + calculation_rules） | 修改 业务语义（Semantics）的 `place_fund_order`（1处） |
+| 新增「30 日复购」指标 | 新写一份完整文档 | 指标目录（Metric） 加一行 `offset_days: 30` |
+| 复购率公式逻辑调整 | 修改所有复购相关计算规则 | 修改 计算模式（Pattern）的 `cohort_retention` 模板（1处） |
 | AI 生成 SQL 出错 | 不知道是哪层的问题 | 精确定位：业务语义（Semantics）/ 计算模式（Pattern）/ 指标目录（Metric）|
 
 ---
@@ -527,29 +572,35 @@ group_by: [channel]           # 维度（Dimension）
 ## 五、AI 的推导路径
 
 ```
-用户：「昨天渠道 A 付费新用户的次日留存」
+用户：「昨天外部渠道新开户客户的次日复购」
            ↓
 指标目录（Metric）：找到最相近的指标配方（或即时组合）
   pattern: cohort_retention
-  entity: user
-  base: paid_new_user         ← 维度（Dimension） 命名取值 ID
-  base_date_field: register_date
-  retain: active_behavior     ← 业务过程（Event） ID
+  entity: customer
+  cohort_event: customer_open        ← 业务过程（Event） ID
+  cohort_date: open_date = ${target_date}
+  retain_event: place_fund_order     ← 业务过程（Event） ID
+  retain_where_named_values:
+    - dimension_id: customer_lifecycle
+      value_id: external_new_customer ← 维度（Dimension） 命名取值 ID
   offset_days: 1
-  group_by: [channel]         ← 维度（Dimension） ID
+  group_by: [open_channel]           ← 维度（Dimension） ID
            ↓
 计算模式（Pattern）：cohort_retention 模板，按参数类型解析各引用
            ↓
 业务语义（Semantics）展开：
-  entity: user
-    → 实体（Entity）：primary_key = user_id
-  base: paid_new_user
-    → 维度（Dimension） 命名取值：sql_condition = (注册且已付费的子查询)
-  retain: active_behavior
-    → 业务过程（Event）：source_table = dwd_user_behavior
-               type_condition = event_type IN ('login','view',...)
-  group_by: channel
-    → 维度（Dimension）：sql_expr = channel，source_table = dwd_user_register
+  entity: customer
+    → 实体（Entity）：primary_key = uid
+  cohort_event: customer_open
+    → 业务过程（Event）：source_table = <开户事件表>，date_field = open_date
+  retain_event: place_fund_order
+    → 业务过程（Event）：source_table = fundx_dwd.dwd_evt_parent_money_order_s
+               type_condition = trade_mode IN ('apply','subscribe')
+  retain_where_named_values.external_new_customer
+    → 维度（Dimension） 命名取值：sql_condition = (开户后 ≤30 天且 flavor_type='external' 的子查询)
+  group_by: open_channel
+    → 维度（Dimension）：sql_expr = flavor，
+                        source_table = data_product.product_fund_uid_register_source_cleaning_s
            ↓
 数据字典（Schema）：验证表名、字段名、分区键存在
            ↓
@@ -557,11 +608,11 @@ group_by: [channel]           # 维度（Dimension）
 ```
 
 **排错路径**：SQL 出错时，检查点精确独立：
-- **实体（Entity）**：`user` 的 `primary_key` 对吗？
-- **业务过程（Event）**：`active_behavior` 的 `type_condition` 包含了哪些事件类型？
-- **维度（Dimension）**：`paid_new_user` 的 `sql_condition` 是否正确？`channel` 字段来自哪张表？
+- **实体（Entity）**：`customer` 的 `primary_key` 对吗？
+- **业务过程（Event）**：`place_fund_order` 的 `type_condition` 包含了哪些 trade_mode？
+- **维度（Dimension）**：`external_new_customer` 的 `sql_condition` 是否正确？`open_channel` 字段来自哪张表？
 - **计算模式（Pattern）**：`cohort_retention` 的 JOIN 类型和时间计算逻辑对吗？
-- **指标目录（Metric）**：`offset_days` 填的是 1 还是 7？`base` 和 `retain` 引用对了吗？
+- **指标目录（Metric）**：`offset_days` 填的是 1 还是 7？`cohort_event` 和 `retain_event` 引用对了吗？
 
 五个独立检查点，不需要全文档 diff。
 
@@ -587,11 +638,11 @@ group_by: [channel]           # 维度（Dimension）
 
 | 本框架 | OneData 概念 | 说明 |
 |--------|-------------|------|
-| Layer 实体（Entity）（Entity） | **业务对象 / 维度主表** | 业务过程和维度 的锚点；OneData 中对应维度建模里的实体主表 |
-| Layer 业务过程（Event）（Event） | **业务过程** | 几乎完全一致，都是最原子的业务活动 |
-| Layer 维度（Dimension）（Dimension） | **维度** | 直接对应，实体的业务属性 |
-| Layer 维度（Dimension） 命名维度取值 | **修饰词** | OneData 的修饰词 = 维度某个具名取值的封装，两者等价 |
-| 计算模式（Pattern）（Pattern） | **度量 + 统计方式** | OneData 中度量关注「算什么」，Pattern 关注「怎么算」 |
+| 实体（Entity） | **业务对象 / 维度主表** | 业务过程和维度 的锚点；OneData 中对应维度建模里的实体主表 |
+| 业务过程（Event） | **业务过程** | 几乎完全一致，都是最原子的业务活动 |
+| 维度（Dimension） | **维度** | 直接对应，实体的业务属性 |
+| 维度（Dimension） 命名维度取值 | **修饰词** | OneData 的修饰词 = 维度某个具名取值的封装，两者等价 |
+| 计算模式（Pattern） | **度量 + 统计方式** | OneData 中度量关注「算什么」，Pattern 关注「怎么算」 |
 | 指标目录（Metric） 指标配方 | **派生指标** | 原子指标 + 修饰词 + 时间周期，结构完全对应 |
 
 **关键差异**：OneData 在业务过程和派生指标之间有一层「**原子指标**」（业务过程 + 度量），本框架目前将其隐含在 计算模式（Pattern）里，未显式命名。如果业务复杂度增加、存在大量共享「中间计算结果」的场景，可以考虑补充这一层。
@@ -600,27 +651,30 @@ group_by: [channel]           # 维度（Dimension）
 
 ## 七、维护成本对比
 
-### 新增一个标准指标（如「付费用户 7 日留存」）
+### 新增一个标准指标（如「私域客户 7 日复购率」）
 
 **现有方案**：写一份包含定义、口径、SQL、注意事项的完整文档（~50 行）
 
 **新方案**：
 ```yaml
-metric_id: d7_retention_paid_user
-name: 付费用户7日留存率
+metric_id: d7_repurchase_private_domain
+name: 私域客户7日复购率
 pattern: cohort_retention
-entity: user
-base: paid_user               # 维度命名取值，已在业务语义（Semantics）中定义
-base_date_field: register_date
-retain: active_behavior       # 业务过程（Event）
+entity: customer
+cohort_event: customer_open    # 基准事件：开户
+cohort_date: open_date = ${target_date}
+retain_event: place_fund_order # 业务过程（Event）
+retain_where_named_values:
+  - dimension_id: customer_lifecycle
+    value_id: private_domain_customer  # 维度命名取值，已在业务语义（Semantics）中定义
 offset_days: 7
 ```
 
-### 修改「活跃行为」的范围
+### 修改「公募主动买入」的范围
 
-**现有方案**：搜索所有文档中提到「活跃」的地方，逐一修改，容易遗漏
+**现有方案**：搜索所有文档中提到「主动买入」的地方，逐一修改，容易遗漏
 
-**新方案**：修改 业务语义（Semantics）中 `active_behavior` 的 `sql_condition` 一处，所有依赖它的指标自动更新
+**新方案**：修改 业务语义（Semantics）中 `place_fund_order` 的 `type_condition` 一处，所有依赖它的指标自动更新
 
 ### 真正需要持续维护的内容
 
@@ -651,10 +705,10 @@ offset_days: 7
 
 | 场景 | 例子 | 当前设计能否处理 |
 |------|------|----------------|
-| 按平台/分区分表 | `dwd_trade_order_ios` + `dwd_trade_order_android` | ❌ |
-| 历史表 + 现状表 | `dwd_user_behavior_2023` + `dwd_user_behavior_2024` | ❌ |
-| 事件识别需要跨表 JOIN | 「完成认证」= 注册表 JOIN 认证表 | ❌ |
-| 多事件共存一张表（已覆盖） | `dwd_user_behavior` 按 `event_type` 区分 | ✅ |
+| 按业务线/产品分表 | 公募父单 + 私募父单分表存储 | ❌ |
+| 历史表 + 现状表 | `dwd_evt_parent_money_order_2023` + `..._2024` | ❌ |
+| 事件识别需要跨表 JOIN | 「首购」= 父单表 JOIN 首购汇总表 | ❌ |
+| 多事件共存一张表（已覆盖） | 父单表按 `trade_mode` 区分申购/认购/定投 | ✅ |
 
 **待讨论**：两种可行扩展方向，各有取舍——
 - **方案 A**：`source_table` 支持数组，隐含 `UNION ALL` 语义，结构化、仅解决分表场景
@@ -663,13 +717,13 @@ offset_days: 7
 ---
 
 **业务语义（Semantics）粒度与边界**
-- 业务过程（Event）的粒度如何决定？（「登录」和「浏览」分开还是合并成「有效行为」？合并的依据是什么？）
-- 维度（Dimension）命名取值的参数化边界：哪些情况应该参数化（如 `purchased_within_n_days`），哪些应该具名定义（如 `new_user`）？判断标准是「业务上有没有独立命名」还是「是否存在变体」？
+- 业务过程（Event）的粒度如何决定？（「申购」和「认购」分开还是合并成「主动买入」？合并的依据是什么？）
+- 维度（Dimension）命名取值的参数化边界：哪些情况应该参数化（如 `purchased_within_n_days`），哪些应该具名定义（如 `new_customer`）？判断标准是「业务上有没有独立命名」还是「是否存在变体」？
 - 简单维度与数据字典（Schema）的合并条件：如果数据字典工具支持业务标注，两者何时可以合并？
 
 **实体（Entity）相关**
 - 当实体没有 `anchor_table` 时，AI 如何决定 JOIN 起点？是从每个维度的 `source_table` 逐一推导，还是需要其他规则？
-- 跨实体的指标（如「每个帖子的平均评论数」涉及 post 和 comment 两个实体）应该在哪层处理？
+- 跨实体的指标（如「每个产品的平均买入客户数」涉及 fund_product 和 customer 两个实体）应该在哪层处理？
 
 **计算模式（Pattern） 与测试**
 - 计算模式（Pattern）的模式如何测试？模板参数组合的正确性如何验证？
@@ -691,3 +745,6 @@ offset_days: 7
 | 2026-04-09 | 迭代：引入 实体（Entity）层；B2 合并分群与维度；计算模式（Pattern） 参数类型系统化；指标目录（Metric） 示例对齐新参数名 |
 | 2026-04-09 | 补充「业务过程多表来源」为待讨论问题，列出方案 A（数组+UNION ALL）和方案 B（source_sql）的取舍 |
 | 2026-04-14 | 迭代维度设计：明确维度值必须是有限离散分类值；将"字段级维度/计算标签"改为"实体属性/计算属性"；新增 `known_values` 概念；实体新增 `id_aliases` 字段；`sum_metric` 新增 `extra_conditions` 参数，修正 `time_window` 仅用于时间过滤的语义 |
+| 2026-04-20 | 清理虚构通用增长示例（user/post/order/DAU/留存）替换为本仓库真实业务示例（蛋卷客户/基金产品/公募买入父单/SOP 触达/复购等），所有示例表名对齐 `knowledge/schema/tables/` 中真实表 |
+| 2026-04-20 | 进一步收敛：去除 Pattern 规模表中尚未落地的 funnel / period_over_period / 月活跃客户数 / 渠道转化率 等未确认条目；`cohort_retention.entity.description` 中的「通常是 user」改为中性描述 |
+| 2026-04-20 | 结构性对齐：（1）`cohort_retention` 参数统一为 `cohort_event`/`retain_event`/`cohort_date`，示例 Metric 同步重写；（2）Pattern 示例中的 `filter_by` 拆分为 `event` + `where_named_values` + `where_dimension_values` 三个字段，解析阶段仍保留 `filter_by` 抽象；（3）实体示例 `anchor_table: <string>` 改为字典 `anchor_tables: {<key>: <table>}`，与 `knowledge/semantics/templates/entity.yaml` 对齐 |

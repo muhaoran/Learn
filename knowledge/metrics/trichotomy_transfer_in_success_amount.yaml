@@ -1,0 +1,27 @@
+metric_id: "trichotomy_transfer_in_success_amount"
+name: "三分法迁入成功金额"
+description: "在指定时间范围内，迁入状态为 success 的三分法迁入订单的总迁入金额（单位：元）"
+
+pattern: "sum_metric"
+
+pattern_params:
+  entity: "user"
+  event: "trichotomy_transfer_in"
+
+  sum_field: "amount"
+
+  time_window: "dt = ${target_date}"
+
+  where_dimension_values:
+    - dimension_id: transfer_status
+      value: "success"
+
+aliases:
+  - "迁入成功金额"
+  - "三分法迁入成功金额"
+  - "成功迁入三分法金额"
+  - "三分法迁入金额（成功）"
+
+notes:
+  - "'迁入金额'口径严格等同订单表中的 amount 字段；并非持仓金额或 volume*nav"
+  - "如需按订单日（create_time）做统计，time_window 改写为 'dt = ${target_date} AND substr(cast(create_time as varchar),1,10) = ${target_date}'"

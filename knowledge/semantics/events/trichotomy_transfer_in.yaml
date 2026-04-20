@@ -1,0 +1,26 @@
+event_id: "trichotomy_transfer_in"
+name: "三分法迁入"
+entity: "user"
+description: "用户把其他账户资产迁入三分法子账户的行为。迁入并不等同于买入，仅当 target_invest_account 是三分法账户时才计入"
+
+source_table: "fundx_ods.ods_fundx_order_asset_transfer_detail_s"
+
+# 三分法迁入 = biz_type='transfer' 且 目标账户为三分法子账户
+# 目标账户判定需要关联 ods_fuser_user_invest_account_s_trans 中 account_code='TRICHOTOMY' 的 invest_account_id
+type_condition: |
+  biz_type = 'transfer'
+  AND CAST(target_invest_account_id AS varchar) IN (
+    SELECT CAST(invest_account_id AS varchar)
+    FROM fundx_ods.ods_fuser_user_invest_account_s_trans
+    WHERE dt = ${target_date}
+      AND account_code = 'TRICHOTOMY'
+  )
+
+# 迁入下单日期取 create_time 截断到日
+date_field: "substr(cast(create_time as varchar), 1, 10)"
+
+aliases:
+  - "迁入"
+  - "三分法迁入"
+  - "资产迁移到三分法"
+  - "三分法迁入下单"

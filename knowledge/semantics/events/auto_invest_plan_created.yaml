@@ -1,0 +1,16 @@
+event_id: "auto_invest_plan_created"
+name: "定投计划创建"
+entity: "user"
+description: "用户创建一个基金定投计划，表示用户设定了定投节奏；不代表已实际扣款（扣款见 auto_invest_execution 事件）"
+
+source_table: "fundx_dwd.dwd_evt_plan_auto_invest_s"
+
+# 取创建日 = 当天分区的记录，用于识别'首次创建'的口径
+# 如果只关心全量存在的计划而非当日创建，去掉该条件
+date_field: "substr(create_time,1,10)"
+
+aliases:
+  - "定投计划"
+  - "开通定投"
+  - "创建定投"
+  - "新建定投"

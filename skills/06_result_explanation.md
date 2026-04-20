@@ -35,11 +35,11 @@ SQL 验证通过后，输出给用户时触发。
 您的需求是：[用标准术语复述需求]
 ```
 
-**示例**:
+**结构**:
 ```markdown
 ## 需求理解
 
-您的需求是：查询 2024 年 1 月每天新注册用户的次日留存率，按注册渠道分组。
+您的需求是：查询 <时间范围> 内 <指标名>，按 <维度> 分组；<如有筛选条件，此处加一句>。
 ```
 
 ### 步骤 2: 展示 SQL
@@ -76,26 +76,26 @@ SQL 验证通过后，输出给用户时触发。
 - [技术点 2]
 ```
 
-**示例**:
+**结构**（以 `cohort_retention` 类指标为例）:
 ```markdown
 ## 技术方案
 
 ### 使用的数据表
-- **主表**: `dwd_user_register` - 获取新注册用户信息，包含注册时间和渠道
-- **关联表**: `dwd_user_behavior` - 获取用户活跃数据，用于判断是否留存
+- **主表**: `<cohort_event.source_table>` - 提供 D0 基准队列与分组维度
+- **关联表**: `<retain_event.source_table>` - 判定 D+N 留存
 
 ### 计算逻辑
-1. 从注册表获取 1 月份的新用户（D0）
-2. 从行为表获取这些用户在次日（D1）的活跃情况
-3. 使用 LEFT JOIN 关联（保留所有新用户，包括未留存的）
-4. 按注册日期和渠道分组
-5. 计算留存率 = D1 活跃用户数 / D0 新增用户数
+1. 从 cohort_event 的来源表取 D0 队列（实体 + D0 日期 + group_by 字段）
+2. 从 retain_event 的来源表取 D+N 的留存实体
+3. 使用 `LEFT JOIN cohort → retained` 保留未留存成员，保证分母正确
+4. 按 <group_by> 分组
+5. 留存率 = `COUNT(DISTINCT retained)` / `NULLIF(COUNT(DISTINCT cohort), 0)`
 
 ### 关键技术点
-- 使用 CTE 提高可读性
-- 使用 LEFT JOIN 避免遗漏未留存用户
-- D1 日期 = 注册日期 + 1 天
-- 严格按照留存率定义计算
+- 使用 CTE 把 cohort 与 retained 分层
+- LEFT JOIN 保证分母不丢失
+- D+N 日期用 `date_add('day', N, cohort_date)` 计算
+- 严格按照 `knowledge/patterns/cohort_retention.yaml` 的骨架展开
 ```
 
 ### 步骤 4: 说明执行信息
@@ -110,18 +110,16 @@ SQL 验证通过后，输出给用户时触发。
 - **预计耗时**: [时间估计]
 ```
 
-**示例**:
+**结构**:
 ```markdown
 ## 执行说明
 
-- **数据表**: `dwd_user_register`, `dwd_user_behavior`
+- **数据表**: `<table_1>`, `<table_2>`
 - **数据范围**: 
-  - 注册表: 2024-01-01 至 2024-01-31 (31 天)
-  - 行为表: 2024-01-02 至 2024-02-01 (31 天)
-- **预计数据量**: 
-  - 新增用户: 约 150 万
-  - 行为记录: 约 15 亿
-- **预计耗时**: 10-30 秒
+  - 主表分区: `<start_date>` 至 `<end_date>`（共 N 天）
+  - JOIN 表分区: `<start_date>` 至 `<end_date>`（共 M 天）
+- **预计数据量**: 按需从 schema 的表描述或历史跑数经验给出；无把握时写 "待评估"
+- **预计耗时**: 根据所用表的层级给经验值（ADS / DWS 通常秒级；DWD 按分区范围给区间）
 ```
 
 ### 步骤 5: 说明结果字段
@@ -135,17 +133,15 @@ SQL 验证通过后，输出给用户时触发。
 | ... | ... | ... | ... | ... |
 ```
 
-**示例**:
+**结构**:
 ```markdown
 ## 结果字段说明
 
-| 字段名 | 含义 | 示例值 | 单位 | 备注 |
-|--------|------|--------|------|------|
-| register_date | 注册日期 | 2024-01-01 | - | D0 日期 |
-| register_channel | 注册渠道 | app_store | - | |
-| new_users_count | 新增用户数 | 50000 | 人 | 当天注册的用户数 |
-| retention_users_count | 留存用户数 | 20000 | 人 | D1 活跃的用户数 |
-| retention_rate | 次日留存率 | 40.00 | % | 保留 2 位小数 |
+| 字段名 | 含义 | 单位 | 备注 |
+|--------|------|------|------|
+| <dimension_alias_1> | <维度业务含义> | - | 来自 `<dimension_id>` |
+| <dimension_alias_2> | <维度业务含义> | - | 来自 `<dimension_id>` |
+| <metric_alias> | <指标业务含义> | <单位> | 保留 <n> 位小数；来自 metric `<metric_id>` |
 ```
 
 ### 步骤 6: 提示注意事项
@@ -159,15 +155,15 @@ SQL 验证通过后，输出给用户时触发。
 - ✅ [优点说明]
 ```
 
-**示例**:
+**结构**:
 ```markdown
 ## 注意事项
 
-- ⚠️ 1 月 31 日的次日留存需要 2 月 1 日的数据，请确保数据已更新
-- ⚠️ 行为表数据量大，查询可能需要 10-30 秒
-- ⚠️ 结果中最后一天的留存率可能不完整（如果 D1 数据未完全更新）
-- ✅ 已使用分区条件，性能可接受
-- ✅ 计算逻辑符合业务定义
+- ⚠️ <边界数据是否完整：如留存类指标末端日期依赖 D+N 数据更新>
+- ⚠️ <性能提示：明细表范围、是否涉及大 JOIN>
+- ⚠️ <口径提示：是否含特定客户分群 / 是否排除特定业务类型>
+- ✅ 已使用所有相关表的 `partition_field` 过滤
+- ✅ 计算逻辑与 `knowledge/metrics/<metric_id>.yaml` 定义一致
 ```
 
 ---
@@ -184,34 +180,31 @@ SQL 验证通过后，输出给用户时触发。
 
 ---
 
-## 示例
+## 完整输出骨架
 
-### 完整输出示例
+> 真实对话中把占位符替换为本次检索到的具体 metric / pattern / table / 字段。骨架本身不绑定任何业务场景。
 
 ```markdown
 ## 需求理解
 
-您的需求是：查询最近 7 天（含今天）每天的 DAU（日活跃用户数）。
+您的需求是：查询 <时间范围> 内 <指标名>，按 <维度> 分组。
 
 ---
 
 ## SQL 语句
 
 ```sql
--- 查询最近 7 天的 DAU 趋势
+-- <指标名>，<时间范围>，按 <维度> 分组
 SELECT 
-    date,
-    COUNT(DISTINCT user_id) AS dau
-FROM 
-    dws_user_daily
-WHERE 
-    date >= date_add('day', -6, current_date)
-    AND date <= current_date
-    AND is_active = 1
-GROUP BY 
-    date
-ORDER BY 
-    date;
+    <group_by.sql_expr>,
+    <pattern 定义的聚合表达式> AS <metric_alias>
+FROM <event.source_table>
+WHERE <partition_field> <时间过滤>
+  AND <event.type_condition>
+  AND <where_dimension_values.sql_expr = value>     -- 如有
+  AND <where_named_values.sql_condition>            -- 如有
+GROUP BY <group_by.sql_expr>
+ORDER BY <group_by.sql_expr>;
 ```
 
 ---
@@ -219,43 +212,42 @@ ORDER BY
 ## 技术方案
 
 ### 使用的数据表
-- **主表**: `dws_user_daily` - 用户日度汇总表，已预计算 DAU，性能好
+- **主表**: `<event.source_table>` - <选择理由，如：ADS/DWS 层、已预聚合等>
 
 ### 计算逻辑
-1. 从用户日度汇总表查询最近 7 天的数据
-2. 筛选活跃用户（is_active = 1）
-3. 按日期分组，统计去重用户数
-4. 按日期升序排列
+1. 从主表按分区过滤取出 <时间范围> 的数据
+2. 应用 `<event.type_condition>` 与 `<where_named_values.sql_condition>` / `<where_dimension_values.sql_expr = value>`
+3. 按 `<group_by.sql_expr>` 分组
+4. 按 pattern `<pattern_id>` 的聚合方式计算 `<metric_alias>`
 
 ### 关键技术点
-- 使用汇总表而非明细表，查询速度快
-- 时间范围: [今天-6, 今天]，共 7 天
-- 按 user_id 去重，符合 DAU 定义
+- 优先用 <汇总层/明细层> 的说明
+- 时间函数使用 Trino 语法（`date_add`, `current_date`）
+- 去重 / NULLIF / 分区过滤都按 pattern 与验证清单处理
 
 ---
 
 ## 执行说明
 
-- **数据表**: `dws_user_daily`
-- **数据范围**: 最近 7 天，约 700 万行（假设日均 100 万活跃用户）
-- **预计耗时**: < 1 秒
+- **数据表**: `<table>`
+- **数据范围**: <分区范围与天数>
+- **预计耗时**: <按表层级给经验值>
 
 ---
 
 ## 结果字段说明
 
-| 字段名 | 含义 | 示例值 | 单位 | 备注 |
-|--------|------|--------|------|------|
-| date | 日期 | 2024-01-01 | - | 统计日期 |
-| dau | 日活跃用户数 | 1500000 | 人 | 去重后的活跃用户数 |
+| 字段名 | 含义 | 单位 | 备注 |
+|--------|------|------|------|
+| <dimension_alias> | <维度含义> | - | 来自 `<dimension_id>` |
+| <metric_alias> | <指标含义> | <单位> | 来自 metric `<metric_id>` |
 
 ---
 
 ## 注意事项
 
-- ⚠️ 今天的数据可能不完整（T+1 更新，当天数据实时性取决于更新频率）
-- ✅ 使用汇总表，查询速度很快
-- ✅ 结果按日期升序排列，方便查看趋势
+- ⚠️ <边界 / 数据延迟 / 口径>
+- ✅ <已做的优化或约束：分区过滤、使用汇总层等>
 ```
 
 ---
@@ -268,9 +260,9 @@ ORDER BY
 - 简洁清晰
 - 使用业务术语而非技术术语（除非必要）
 
-**示例**:
-- ✅ "使用用户日度汇总表，性能好"
-- ❌ "使用 DWS 层的宽表，避免了 shuffle 操作"
+**对比**:
+- ✅ "使用汇总层表，单次查询成本低"
+- ❌ "用 DWS 宽表避免了 shuffle"（过度技术化）
 
 ### 2. 结构化输出
 
@@ -301,3 +293,4 @@ ORDER BY
 | 日期 | 修改人 | 修改内容 |
 |------|--------|----------|
 | 2024-01-01 | AI | 创建文档 |
+| 2026-04-20 | AI | 清理虚构示例；cohort_retention 技术方案说明改用 cohort_event/retain_event；WHERE 过滤文案拆分 filter_by 为 where_named_values/where_dimension_values |

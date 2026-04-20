@@ -15,7 +15,7 @@
 4. 验证 SQL 的正确性
 5. 清晰地解释技术方案
 
-**重要**: 所有 SQL 必须使用 Trino 语法规范，不能使用 MySQL、Hive、Presto 等其他数据库的语法。
+**重要**: 所有 SQL 必须使用 Trino 语法规范。Trino 是 PrestoSQL 的继承版本，大多数 Presto 语法在 Trino 中可用；但必须以 Trino 官方文档为准，不得使用 MySQL、Hive 专属语法，也不得使用 PrestoDB（Facebook 分支）与 Trino 已不兼容的函数。
 
 ---
 
@@ -311,84 +311,87 @@
 
 ### 示例 1: 简单需求
 
-**用户**: 查询昨天的 DAU
+**用户**: 昨天公募小雪 SOP 成功发送了多少条？
 
 **AI**:
 ```markdown
 ## 需求理解
 
-您的需求是：查询昨天的日活跃用户数（DAU）。
+您的需求是：查询昨天「公募小雪」业务线下，SOP 触达成功发送的条数。
 
 ## SQL 语句
 
 ```sql
--- 查询昨天的 DAU
-SELECT 
-    date,
-    COUNT(DISTINCT user_id) AS dau
-FROM 
-    dws_user_daily
-WHERE 
-    date = date_add('day', -1, current_date)
-    AND is_active = 1
-GROUP BY 
-    date
+-- 昨天公募小雪 SOP 成功发送条数
+SELECT
+    to_date(send_time)        AS send_date,
+    COUNT(*)                  AS success_send_cnt
+FROM fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans
+WHERE dt = date_format(date_add('day', -1, current_date), '%Y-%m-%d')
+  AND business_type = '公募小雪'
+  AND status        = 'success'
+GROUP BY to_date(send_time)
 ```
 
 ## 技术方案
 
-- **使用的表**: `dws_user_daily` - 用户日度汇总表，已预计算 DAU，性能好
-- **计算逻辑**: 统计昨天活跃的去重用户数
-- **关键技术点**: 使用汇总表，查询速度快
+- **使用的表**: `fundx_ods.ods_fundx_socialcrm_wechat_reach_record_s_trans` —— 企微触达明细
+- **计算逻辑**: 按发送日期统计 `status = 'success'` 的触达条数
+- **关键技术点**: 用 `dt` 分区 + `business_type` 过滤，避免全表扫描
 
 ## 执行说明
 
-- **数据范围**: 昨天 1 天的数据
-- **预计耗时**: < 1 秒
+- **数据范围**: 昨天 1 天的分区数据
+- **预计耗时**: 视分区量级，秒级
 
 ## 结果字段说明
 
 | 字段名 | 含义 | 示例值 |
 |--------|------|--------|
-| date | 日期 | 2024-01-15 |
-| dau | 日活跃用户数 | 1500000 |
+| send_date | 发送日期 | <示意值> |
+| success_send_cnt | 成功发送条数 | <示意值> |
 
 ## 注意事项
 
-- ✅ 使用汇总表，查询速度很快
-- ⚠️ 数据为 T+1 更新，确保已更新完成
+- ⚠️ 注意 `send_time` 是字符串字段，需要 `to_date()` 转换
+- ⚠️ `dt` 分区与业务日（`send_time` 当日）可能存在边界差异，如需严格按业务日统计请二次确认
 ```
 
 ### 示例 2: 需要澄清的需求
 
-**用户**: 帮我看下新用户的留存
+**用户**: 帮我看下新开户客户的复购情况
 
 **AI**:
 ```markdown
 ## 需求理解
 
-您想查询新用户的留存情况。
+您想查询新开户客户的复购情况。
 
 ## 需要确认
 
 为了生成准确的 SQL，请确认以下几点：
 
-1. **时间范围** - 想看哪个时间段注册的新用户？
+1. **时间范围** - 想看哪个时间段开户的新客户？
    A. 最近 30 天
    B. 本月
    C. 上月
    D. 其他（请指定）
 
-2. **留存类型** - 想看哪种留存？
-   A. 次日留存（D1）
-   B. 7 日留存（D7）
-   C. 30 日留存（D30）
-   D. 留存曲线（D1, D3, D7, D15, D30）
+2. **复购窗口** - 想看哪个窗口的复购？
+   A. 次日复购（D1）
+   B. 7 日复购（D7）
+   C. 次月复购
+   D. 复购曲线（D1, D3, D7, D15, D30）
 
-3. **分析维度** - 是否需要按维度分组？
+3. **复购口径** - 复购指什么交易？
+   A. 公募主动买入（申购/认购）
+   B. 含定投执行
+   C. 任意父单（含转换/赎回）
+
+4. **分析维度** - 是否需要按维度分组？
    A. 不需要，只看整体
-   B. 按注册渠道分组
-   C. 按日期分组（看每天的留存）
+   B. 按开户渠道（flavor）分组
+   C. 按开户日期分组
    D. 其他维度
 
 请告诉我您的选择，我将为您生成准确的 SQL。
@@ -420,3 +423,6 @@ GROUP BY
 |------|--------|----------|
 | 2024-01-01 | AI | 创建初始版本 |
 | 2026-04-09 | AI | 对齐四层可组合知识架构：更新知识检索路径、修正示例 SQL 为 Trino 语法、移除旧 sql_examples 引用 |
+| 2026-04-20 | AI | 清理虚构通用增长示例（DAU/新用户留存），替换为本仓库真实业务示例（公募小雪 SOP 触达、新开户客户复购） |
+| 2026-04-20 | AI | 全仓一致性清理：skills/ 及各 README / TEMPLATE 中的虚构示例（DAU / MAU / 留存 / dwd_user_behavior / dws_user_daily 等）全部替换为抽象占位符；trino_syntax.md 替换为真实业务字段 |
+| 2026-04-20 | AI | 逻辑/契约一致性清理：pattern YAML 解析错误修复（`cohort_retention`/`count_distinct` 中 description 嵌套双引号）、`ods_fundx_order_asset_transfer_detail.yaml` 双定义合并、`cohort_retention` 参数统一、`filter_by` 契约拆分为 `event`+`where_*`、`anchor_tables` 字典化、`event` 模板补 `date_field`、`default_group_by`/`grain` 虚空字段引用清理、phantom 设计文档列表收敛、`skills/07` 模板路径与归档路径修正、`knowledge/README` 流程对齐六步、标准输出小节标题统一、`schema/TEMPLATE` 补 `full_name`、空壳表 YAML 加禁引列名约束、`semantics/README` 补 `join_key`/`depends_on_events`/`parameters` 字段说明 |

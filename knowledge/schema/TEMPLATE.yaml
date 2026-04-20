@@ -1,43 +1,42 @@
 # 表定义模板
 # 复制本文件并按实际情况填写
 
-table_id: "your_table_name"          # 表的物理名称，全小写下划线
-name: "中文表名"
-layer: DWD                            # ODS / DWD / DWS / ADS / DIM
-description: "表的业务含义，一句话说清楚这张表存什么"
+table_id: "<table_name>"             # 表的物理名称（不含 schema 与后缀），全小写下划线
+name: "<中文表名>"
+full_name: "<schema>.<table_physical_name>"   # Trino 查询时必须用的完整限定名，包含 schema 前缀与分层后缀（如 _s/_i 等）
+layer: <ODS | DWD | DWS | ADS | DIM>
+description: "<表的业务含义，一句话说清楚这张表存什么>"
 
 storage:
-  partition_field: "date"             # 分区字段，无则填 null
-  update_frequency: "T+1"            # 实时 / T+1 / 按需
-  data_range: "2020-01-01 至今"
-  row_estimate: "日增约 XX 万行"
-  retention: "保留最近 XX 天/年"     # 数据保留策略
+  partition_field: "<partition_field>" # 分区字段，无则填 null
+  update_frequency: "<T+1 / 实时 / 按需>"
+  data_range: "<起始日期 至今>"
+  row_estimate: "<日增约 XX 万行>"
+  retention: "<保留最近 XX 天/年>"    # 数据保留策略
 
 primary_key:
   - field_name                        # 组合主键时列多个
 
 columns:
-  - name: "field_name"
-    type: "bigint"                    # 使用 Trino 数据类型
-    description: "字段含义"
-    nullable: false
-    is_partition: false
-    example: "123456"
+  - name: "<field_name>"
+    type: "<trino_type>"              # 使用 Trino 数据类型
+    description: "<字段含义>"
+    nullable: <true|false>
+    is_partition: <true|false>
+    example: "<示例值>"
     # enum_values 仅在枚举值固定且不多时填写（如状态字段）
     enum_values:
-      - value: "value1"
-        description: "含义"
-      - value: "value2"
-        description: "含义"
+      - value: "<value>"
+        description: "<含义>"
 
   # 继续添加字段...
 
 notes:
-  - "注意事项1（如：必须加分区条件，否则全表扫描）"
-  - "注意事项2"
+  - "<注意事项1，如：必须加分区条件，否则全表扫描>"
+  - "<注意事项2>"
 
 related_tables:
-  - table: "schema.related_table_name"
-    join_field: "join_field_name"
-    join_type: "N:1"
-    purpose: "关联用途说明"
+  - table: "<schema>.<related_table>"
+    join_field: "<join_field>"
+    join_type: "<1:1 | 1:N | N:1 | N:N>"
+    purpose: "<关联用途说明>"

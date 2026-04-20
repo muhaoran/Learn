@@ -1,8 +1,8 @@
 # 计算模式（Pattern）定义模板
 
-pattern_id: "your_pattern_id"      # 英文标识，全小写下划线
-name: "中文名"
-description: "这个模式解决什么计算问题，一句话说清楚"
+pattern_id: "<pattern_id>"          # 英文标识，全小写下划线
+name: "<中文名>"
+description: "<这个模式解决什么计算问题，一句话说清楚>"
 
 parameters:
   entity:
@@ -18,7 +18,7 @@ parameters:
   where_dimension_values:
     type: "list<{dimension_id: Dimension, value: string}>"
     required: false
-    description: "按维度字段的具体值过滤，展开为 WHERE sql_expr = 'value'；如 [{dimension_id: user_platform, value: 'iOS'}]"
+    description: "按维度字段的具体值过滤，展开为 WHERE sql_expr = 'value'；如 [{dimension_id: <dimension_id>, value: '<value>'}]"
 
   where_named_values:
     type: "Dimension.NamedValue[]"
@@ -41,42 +41,37 @@ parameters:
 # SQL 模板：${参数名.属性} 引用上面的参数，具体展开效果见 example_usage
 sql_template: |
   SELECT
-    ${group_by},                                    -- 如 register_channel（无 group_by 时省略）
-    COUNT(DISTINCT ${entity.primary_key}) AS cnt    -- 如 COUNT(DISTINCT user_id)
-  FROM ${event.source_table}                        -- 如 FROM dwd_user_behavior
-  LEFT JOIN ${dimension.source_table} ON ${dimension.join_key}
-                                                      -- 分组或过滤用到的字段不在主表中时，JOIN 该维度定义的 source_table
-                                                      -- 如 LEFT JOIN dwd_user_register ON user_id = user_id
-  WHERE ${event.type_condition}                     -- 如 behavior_type = 'create_post'（无则省略）
-    AND ${where_dimension_values}                   -- 如 AND platform = 'iOS'
-    AND ${where_named_values}                       -- 如 AND user_id IN (SELECT ...)
-    AND ${time_window}                              -- 如 date = '2024-01-01'
-  GROUP BY ${group_by}                              -- 无 group_by 时省略
+    ${group_by.expr, ...}                                 -- 无 group_by 时省略
+    COUNT(DISTINCT ${entity.primary_key}) AS <metric_alias>
+  FROM ${event.source_table}
+  ${LEFT JOIN dim.source_table ON dim.join_key}           -- group_by / where_dimension_values 字段不在主表时展开
+  WHERE ${time_window}                                    -- 必填
+    ${AND event.type_condition}                           -- 如有
+    ${AND where_dimension_values.sql_expr = value, ...}   -- 如有
+    ${AND where_named_values.sql_condition, ...}          -- 如有
+  ${GROUP BY group_by.expr, ...}                          -- 无 group_by 时省略
 
 example_usage:
-  description: "统计某天 iOS 平台上发帖的新用户数，按注册渠道分组"
+  # ── 占位骨架（说明展开规则；实际使用时把 <...> 占位替换为真实实体/事件/维度/表/字段） ──
+  description: "占位骨架：按 <维度> 分组的 <count_distinct 类指标>"
   parameters:
-    entity: user                                            # Entity → primary_key = user_id
-    event: post_publish                                     # Event → FROM dwd_user_behavior WHERE behavior_type = 'create_post'
+    entity: "<entity_id>"                                 # → primary_key = <entity_pk>
+    event:  "<event_id>"                                  # → FROM <event_table> [WHERE <event.type_condition>]
     where_dimension_values:
-      - dimension_id: user_platform                         # Dimension → AND platform = 'iOS'（需 JOIN dwd_user_behavior 已有该字段）
-        value: "iOS"
+      - dimension_id: <dimension_id>                      # → AND <dim_field> = '<value>'
+        value: "<value>"
     where_named_values:
-      - new_user                                            # Dimension.NamedValue → AND user_id IN (SELECT ... FROM dwd_user_register)
-    time_window: "date = '2024-01-01'"                      # date_expr → 直接嵌入 WHERE
-    group_by: ["user_register_channel"]                     # Dimension[] → JOIN dwd_user_register，SELECT + GROUP BY register_channel
+      - <named_value_id>                                  # → AND <entity_pk> IN (SELECT ... <sql_condition>)
+    time_window: "<partition_field> = '<date>'"
+    group_by: ["<dimension_id>"]                          # → SELECT + GROUP BY <dim_expr>（必要时 JOIN <dim_source_table>）
   generated_sql: |
     SELECT
-      r.register_channel,
-      COUNT(DISTINCT b.user_id) AS cnt
-    FROM dwd_user_behavior b
-    JOIN dwd_user_register r ON b.user_id = r.user_id
-    WHERE b.behavior_type = 'create_post'
-      AND b.platform = 'iOS'
-      AND b.date = '2024-01-01'
-      AND b.user_id IN (
-        SELECT user_id
-        FROM dwd_user_register
-        WHERE register_date = '2024-01-01'
-      )
-    GROUP BY r.register_channel
+      <dim_expr>,
+      COUNT(DISTINCT <entity_pk>) AS <metric_alias>
+    FROM <event_table>
+    [JOIN <dim_source_table> ON <join_condition>]
+    WHERE <partition_field> = '<date>'
+      [AND <event.type_condition>]
+      [AND <dim_field> = '<value>']
+      [AND <entity_pk> IN (SELECT ... <named_value.sql_condition>)]
+    GROUP BY <dim_expr>

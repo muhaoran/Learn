@@ -1,0 +1,15 @@
+dimension_id: "gender"
+name: "性别"
+entity: "private_domain_user"
+description: "私域用户的性别，来自私域用户基础信息表"
+
+aliases:
+  - "性别"
+  - "gender"
+  - "男女"
+
+source_table: "fundx_dwd.dwd_pat_private_domain_user_base_info_s"
+join_key: "wechat_id"
+sql_expr: "gender"
+
+known_values: []

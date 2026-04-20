@@ -15,6 +15,7 @@ primary_key: []
 columns: []
 
 notes:
+  - "字段定义待补充：columns 与 primary_key 为空，AI 生成 SQL 时不得引用本表的任何列；如需使用，请先补全字段字典。"
   - "列信息待补充：该表在 PDF 中仅以表名出现，具体字段需从实际数据或研发文档补充"
   - "与 fundx_dwd.dwd_evt_wechat_private_chat_record_i 的区别：本表为全量（含群聊），后者仅私聊"
   - "来源：句子（Juzi）系统聊天数据"

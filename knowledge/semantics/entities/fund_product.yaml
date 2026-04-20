@@ -1,12 +1,20 @@
 entity_id: "fund_product"
-name: "公募基金产品"
-description: "公募业务中的基金产品实体，交易、持仓、行情等分析均围绕该实体展开"
+name: "基金产品"
+description: "公募业务中的产品主体，以 pro_code 为统一产品标识，覆盖公募单品、组合、投顾、三分法等全部产品类型"
 
 primary_key: "pro_code"
-anchor_table: "fundx_dwd.dwd_pro_agent_product_info_s"
+
+id_aliases:
+  - "symbol"      # 行情模块里带 F/P/TIA 等后缀的标识
+  - "fund_code"   # 成分基金代码（组合/投顾内部成分）
+  - "plan_code"   # 组合代码（组合/投顾的顶层代码）
+
+anchor_tables:
+  product_info: "fundx_dwd.dwd_pro_agent_product_info_s"
+  market_info: "xq_dwd.dwd_pro_stock_base_info_s"
 
 aliases:
+  - "产品"
   - "基金"
-  - "基金产品"
-  - "公募产品"
-  - "product"
+  - "pro_code"
+  - "fund"

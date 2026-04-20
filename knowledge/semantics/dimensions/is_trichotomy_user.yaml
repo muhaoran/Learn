@@ -1,0 +1,50 @@
+dimension_id: "is_trichotomy_user"
+name: "是否三分法用户"
+entity: "user"
+description: "判定用户在指定日期是否属于'三分法用户'。默认口径：截至 target_date 当天，该用户在三分法子账户下存在有效持仓（volume>0）"
+
+aliases:
+  - "三分法用户"
+  - "是否三分法"
+  - "三分法持仓用户"
+
+named_values:
+  - value_id: "is_trichotomy"
+    name: "是三分法用户"
+    description: "在指定快照日期下，存在三分法子账户的有效持仓"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "持仓快照日期"
+    sql_condition: |
+      uid IN (
+        SELECT uid
+        FROM fundx_dwd.dwd_ast_pub_daily_holding_detail_i
+        WHERE dt = ${target_date}
+          AND invest_account_code = 'TRICHOTOMY'
+          AND volume > 0
+      )
+    aliases:
+      - "有三分法持仓的用户"
+
+  - value_id: "not_trichotomy"
+    name: "非三分法用户"
+    description: "在指定快照日期下，不存在三分法子账户的有效持仓"
+    depends_on_events: []
+    parameters:
+      target_date:
+        type: date
+        default: "${busi_date}"
+        description: "持仓快照日期"
+    sql_condition: |
+      uid NOT IN (
+        SELECT uid
+        FROM fundx_dwd.dwd_ast_pub_daily_holding_detail_i
+        WHERE dt = ${target_date}
+          AND invest_account_code = 'TRICHOTOMY'
+          AND volume > 0
+      )
+    aliases:
+      - "无三分法持仓"

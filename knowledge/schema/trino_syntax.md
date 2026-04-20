@@ -68,8 +68,8 @@ date_diff('day', date1, date2)            -- 计算两个日期相差的天数
 date_diff('month', date1, date2)          -- 计算两个日期相差的月数
 date_diff('year', date1, date2)           -- 计算两个日期相差的年数
 
--- 示例：计算注册天数
-date_diff('day', register_date, current_date)
+-- 示例：计算两个日期字段之间相差的天数
+date_diff('day', <earlier_date_field>, <later_date_field>)
 
 -- ❌ 错误：MySQL 语法
 DATEDIFF(date1, date2)
@@ -153,7 +153,7 @@ concat(str1, str2, str3)                  -- 连接多个字符串
 str1 || str2 || str3                      -- 使用 || 操作符
 
 -- 示例
-concat('用户ID:', cast(user_id as varchar))
+concat('uid:', cast(uid as varchar))
 'Hello' || ' ' || 'World'
 
 -- ❌ 错误：MySQL 语法
@@ -168,7 +168,7 @@ substr(str, start, length)                -- 截取子串（从 1 开始）
 substring(str, start, length)             -- 同上
 
 -- 示例：截取前 10 个字符
-substr(content, 1, 10)
+substr(<varchar_column>, 1, 10)
 
 -- ❌ 错误：MySQL 语法（start 从 0 开始）
 SUBSTRING(str, 0, length)
@@ -181,7 +181,7 @@ SUBSTRING(str, 0, length)
 length(str)                               -- 字符串长度
 
 -- 示例
-WHERE length(username) > 5
+WHERE length(<varchar_column>) > 5
 ```
 
 ### 2.4 字符串查找和替换
@@ -194,7 +194,7 @@ strpos(str, substring)                    -- 查找子串位置（从 1 开始�
 replace(str, search, replacement)         -- 替换字符串
 
 -- 示例
-replace(phone, '-', '')                   -- 去除电话号码中的横线
+replace(<varchar_column>, '-', '')        -- 去除字段中的横线
 ```
 
 ### 2.5 大小写转换
@@ -205,7 +205,7 @@ upper(str)                                -- 转大写
 lower(str)                                -- 转小写
 
 -- 示例
-WHERE lower(email) like '%@gmail.com'
+WHERE lower(<varchar_column>) like '%<pattern>%'
 ```
 
 ### 2.6 去除空格
@@ -217,7 +217,7 @@ ltrim(str)                                -- 去除左侧空格
 rtrim(str)                                -- 去除右侧空格
 
 -- 示例
-WHERE trim(username) != ''
+WHERE trim(<varchar_column>) != ''
 ```
 
 ### 2.7 正则表达式
@@ -232,11 +232,11 @@ regexp_extract(str, pattern, group)       -- 提取匹配的组
 -- ✅ 正则替换（Trino）
 regexp_replace(str, pattern, replacement) -- 正则替换
 
--- 示例：匹配手机号
-WHERE regexp_like(phone, '^\d{11}$')
+-- 示例：匹配固定位数的数字字符串
+WHERE regexp_like(<varchar_column>, '^\d{11}$')
 
--- 示例：提取域名
-regexp_extract(email, '@(.+)$', 1)
+-- 示例：提取 `@` 之后的部分
+regexp_extract(<varchar_column>, '@(.+)$', 1)
 ```
 
 ### 2.8 字符串分割
@@ -246,11 +246,11 @@ regexp_extract(email, '@(.+)$', 1)
 split(str, delimiter)                     -- 分割字符串为数组
 split_part(str, delimiter, index)         -- 获取分割后的第 N 部分（从 1 开始）
 
--- 示例：获取邮箱用户名
-split_part(email, '@', 1)
+-- 示例：按分隔符取第 1 段
+split_part(<varchar_column>, '@', 1)
 
--- 示例：分割标签
-split(tags, ',')
+-- 示例：按分隔符切成数组
+split(<varchar_column>, ',')
 ```
 
 ---
@@ -269,8 +269,8 @@ avg(column)                               -- 平均值
 max(column)                               -- 最大值
 min(column)                               -- 最小值
 
--- 示例：计算 DAU
-count(distinct user_id)
+-- 示例：对实体主键做去重计数
+count(distinct uid)
 ```
 
 ### 3.2 近似聚合（性能优化）
@@ -281,8 +281,8 @@ approx_distinct(column)                   -- 近似去重计数（误差约 2.3%
 approx_percentile(column, 0.5)            -- 近似中位数
 approx_percentile(column, 0.95)           -- 近似 95 分位数
 
--- 示例：大数据量时计算 DAU
-approx_distinct(user_id)                  -- 比 count(distinct) 快很多
+-- 示例：大数据量明细表上用近似去重
+approx_distinct(uid) FROM fundx_dwd.dwd_evt_parent_money_order_s  -- 比 count(distinct) 快很多
 ```
 
 ### 3.3 数组聚合
@@ -291,8 +291,8 @@ approx_distinct(user_id)                  -- 比 count(distinct) 快很多
 -- ✅ 数组聚合（Trino）
 array_agg(column)                         -- 聚合为数组
 
--- 示例：聚合用户的所有标签
-array_agg(tag)
+-- 示例：按实体聚合某字段
+array_agg(<varchar_column>)
 ```
 
 ---
@@ -307,14 +307,14 @@ row_number() over (partition by field1 order by field2 desc)  -- 行号（1,2,3.
 rank() over (partition by field1 order by field2 desc)         -- 排名（1,2,2,4...）
 dense_rank() over (partition by field1 order by field2 desc)   -- 密集排名（1,2,2,3...）
 
--- 示例：每个渠道的 TOP 10 用户
+-- 示例：按某个分组字段取 TOP N
 SELECT 
-    user_id,
-    channel,
-    score,
-    row_number() over (partition by channel order by score desc) as rank
-FROM user_scores
-WHERE rank <= 10;
+    <entity_pk>,
+    <group_col>,
+    <metric_col>,
+    row_number() over (partition by <group_col> order by <metric_col> desc) as rk
+FROM <source_table>
+WHERE rk <= 10;
 ```
 
 ### 4.2 累计函数
@@ -325,8 +325,8 @@ sum(field) over (partition by field1 order by field2)          -- 累计求和
 avg(field) over (partition by field1 order by field2)          -- 移动平均
 count(*) over (partition by field1 order by field2)            -- 累计计数
 
--- 示例：累计新增用户数
-sum(new_users) over (order by date)
+-- 示例：按日期累计求和
+sum(<metric_col>) over (order by <date_col>)
 ```
 
 ### 4.3 偏移函数
@@ -338,13 +338,17 @@ lead(field, 1) over (order by date)                            -- 下一行的�
 first_value(field) over (partition by field1 order by field2)  -- 第一个值
 last_value(field) over (partition by field1 order by field2)   -- 最后一个值
 
--- 示例：计算环比增长率
+-- 示例：使用 lag 计算相邻行的环比
 SELECT 
-    date,
-    dau,
-    lag(dau, 1) over (order by date) as yesterday_dau,
-    round((dau - lag(dau, 1) over (order by date)) * 100.0 / lag(dau, 1) over (order by date), 2) as growth_rate
-FROM daily_metrics;
+    <date_col>,
+    <metric_col>,
+    lag(<metric_col>, 1) over (order by <date_col>) AS prev_value,
+    round(
+        (<metric_col> - lag(<metric_col>, 1) over (order by <date_col>)) * 100.0
+        / nullif(lag(<metric_col>, 1) over (order by <date_col>), 0),
+        2
+    ) AS growth_rate
+FROM <source_table>;
 ```
 
 ---
@@ -362,8 +366,8 @@ cast(column as date)                      -- 转换为日期
 cast(column as timestamp)                 -- 转换为时间戳
 cast(column as decimal(10,2))             -- 转换为定点数
 
--- 示例：计算百分比
-cast(count(distinct user_id) as double) * 100.0 / total_users
+-- 示例：比值类计算需要先 cast 成 double 再除
+cast(count(distinct <entity_pk>) as double) * 100.0 / nullif(<denominator>, 0)
 ```
 
 ### 5.2 安全类型转换
@@ -373,7 +377,7 @@ cast(count(distinct user_id) as double) * 100.0 / total_users
 try_cast(column as bigint)                -- 转换失败返回 NULL
 
 -- 示例：处理可能包含非数字的字段
-WHERE try_cast(user_input as bigint) is not null
+WHERE try_cast(<varchar_column> as bigint) is not null
 ```
 
 ---
@@ -390,12 +394,12 @@ case
     else result3
 end
 
--- 示例：用户分层
+-- 示例：按阈值分档
 case 
-    when score >= 90 then '高价值用户'
-    when score >= 60 then '中等用户'
-    else '低价值用户'
-end as user_level
+    when <numeric_col> >= 90 then 'A'
+    when <numeric_col> >= 60 then 'B'
+    else 'C'
+end as bucket
 ```
 
 ### 6.2 IF 函数
@@ -404,8 +408,8 @@ end as user_level
 -- ✅ IF 函数（Trino）
 if(condition, true_value, false_value)
 
--- 示例：判断是否活跃
-if(login_days >= 7, '活跃', '不活跃')
+-- 示例：按阈值二分
+if(<numeric_col> >= 7, 'Y', 'N')
 ```
 
 ### 6.3 COALESCE
@@ -415,7 +419,7 @@ if(login_days >= 7, '活跃', '不活跃')
 coalesce(column1, column2, default_value) -- 返回第一个非 NULL 值
 
 -- 示例：提供默认值
-coalesce(nickname, username, '匿名用户')
+coalesce(<varchar_col_1>, <varchar_col_2>, '<default>')
 ```
 
 ### 6.4 NULLIF
@@ -424,8 +428,8 @@ coalesce(nickname, username, '匿名用户')
 -- ✅ NULLIF（Trino）
 nullif(column1, column2)                  -- 如果相等返回 NULL
 
--- 示例：避免除零错误
-sum(amount) / nullif(count(*), 0)
+-- 示例：避免除零错误（比值类指标必备）
+sum(<measure_col>) / nullif(count(*), 0)
 ```
 
 ---
@@ -451,8 +455,8 @@ array_distinct(array_column)              -- 数组去重
 -- ✅ 数组转字符串（Trino）
 array_join(array_column, delimiter)       -- 数组转字符串
 
--- 示例：判断用户是否有某个标签
-WHERE contains(tags, '活跃用户')
+-- 示例：判断数组是否包含某值
+WHERE contains(<array_col>, '<value>')
 ```
 
 ---
@@ -462,49 +466,49 @@ WHERE contains(tags, '活跃用户')
 ### 8.1 最近 N 天的数据
 
 ```sql
--- ✅ 最近 7 天（Trino）
-WHERE date >= date_add('day', -6, current_date)
-  AND date <= current_date
+-- ✅ 最近 7 天（Trino），<partition_field> 按表 storage.partition_field 填
+WHERE <partition_field> >= date_add('day', -6, current_date)
+  AND <partition_field> <= current_date
 
 -- ✅ 最近 30 天（Trino）
-WHERE date >= date_add('day', -29, current_date)
-  AND date <= current_date
+WHERE <partition_field> >= date_add('day', -29, current_date)
+  AND <partition_field> <= current_date
 
 -- ❌ 错误：MySQL 语法
-WHERE date >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
+WHERE <partition_field> >= DATE_SUB(CURRENT_DATE(), INTERVAL 6 DAY)
 ```
 
 ### 8.2 本月/上月数据
 
 ```sql
 -- ✅ 本月数据（Trino）
-WHERE date >= date_trunc('month', current_date)
-  AND date < date_add('month', 1, date_trunc('month', current_date))
+WHERE <partition_field> >= date_trunc('month', current_date)
+  AND <partition_field> <  date_add('month', 1, date_trunc('month', current_date))
 
 -- ✅ 上月数据（Trino）
-WHERE date >= date_add('month', -1, date_trunc('month', current_date))
-  AND date < date_trunc('month', current_date)
+WHERE <partition_field> >= date_add('month', -1, date_trunc('month', current_date))
+  AND <partition_field> <  date_trunc('month', current_date)
 ```
 
 ### 8.3 去重计数
 
 ```sql
 -- ✅ 精确去重（Trino）
-count(distinct user_id)
+count(distinct uid)
 
 -- ✅ 近似去重（Trino，大数据量推荐）
-approx_distinct(user_id)
+approx_distinct(uid)
 ```
 
-### 8.4 留存率计算
+### 8.4 比值类计算
 
 ```sql
--- ✅ 留存率计算（Trino）
+-- ✅ 比值类计算：先 cast 成 double，并用 nullif 防除零
 round(
-    cast(count(distinct retention_users.user_id) as double) * 100.0 
-    / count(distinct base_users.user_id), 
+    cast(count(distinct <numerator_entity_pk>) as double) * 100.0
+    / nullif(count(distinct <denominator_entity_pk>), 0),
     2
-) as retention_rate
+) as ratio
 ```
 
 ---
@@ -515,16 +519,16 @@ round(
 
 ```sql
 -- ✅ 大数据量时使用近似聚合（Trino）
-approx_distinct(user_id)                  -- 比 count(distinct) 快 10-100 倍
-approx_percentile(response_time, 0.95)    -- 近似分位数
+approx_distinct(uid)                      -- 比 count(distinct) 快 10-100 倍
+approx_percentile(<numeric_col>, 0.95)    -- 近似分位数
 ```
 
 ### 9.2 分区裁剪
 
 ```sql
--- ✅ 必须包含分区字段条件（Trino）
-WHERE date >= date_add('day', -7, current_date)
-  AND date <= current_date
+-- ✅ 必须包含分区字段条件（Trino），<partition_field> 来自表的 storage.partition_field
+WHERE <partition_field> >= date_add('day', -7, current_date)
+  AND <partition_field> <= current_date
 ```
 
 ### 9.3 提前过滤
@@ -532,10 +536,10 @@ WHERE date >= date_add('day', -7, current_date)
 ```sql
 -- ✅ 在 JOIN 前先过滤（Trino）
 FROM (
-    SELECT * FROM large_table 
-    WHERE date = current_date
+    SELECT * FROM <large_table>
+    WHERE <partition_field> = current_date
 ) t1
-JOIN small_table t2 ON t1.id = t2.id
+JOIN <small_table> t2 ON t1.<join_key> = t2.<join_key>
 ```
 
 ---
@@ -578,6 +582,8 @@ JOIN small_table t2 ON t1.id = t2.id
 | 日期 | 修改人 | 修改内容 |
 |------|--------|----------|
 | 2024-01-01 | AI | 创建 Trino 语法速查指南 |
+| 2026-04-20 | AI | 清理虚构业务示例，主键字段改为真实字段 `uid`，明细表引用改为 `fundx_dwd.dwd_evt_parent_money_order_s`，其余示例字段改为类型化占位符 |
+| 2026-04-20 | AI | Presto 边界说明：Trino 继承 PrestoSQL，多数 Presto 语法可用；以 Trino 官方文档为准，避免使用 PrestoDB 专属函数 |
 
 ---
 
