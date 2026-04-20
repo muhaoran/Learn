@@ -1,0 +1,156 @@
+dimension_id: "first_purchase_category"
+name: "首购品类分群"
+entity: "user"
+description: |
+  参数化分群维度：在给定时间窗 [window_start, window_end] 内发生人生首购（最早一笔公募主动买入）
+  且首单的某个品类字段取指定值的用户群体。"品类"通过参数 category_field 选择，常见取值：
+    - invest_account_code  子账户类型（如 'TRICHOTOMY'、'YZYX'、'DEFAULT'）
+    - basi_type_name_trans 基金明细分类（需 JOIN 持仓/产品表取值，此处走 pro_code 路径）
+    - pro_type             产品类型代码（'F' 公募单品 / 'ZH' 组合 / 'TG' 投顾 / 'YZ' 有知有行 等）
+  口径为"人生首购"：通过反连接 window_start 之前的历史父单排除已有买入的老客，
+  再对窗口内每个 uid 按 init_time 取最早一笔（ROW_NUMBER=1），以该首单的 ${category_field} 与
+  ${category_value} 比较。窗口口径同时约束分区 dt 与业务下单日 substr(init_time,1,10)。
+
+aliases:
+  - "首购品类"
+  - "首购类型"
+  - "首单品类"
+  - "首购品类分群"
+  - "首购即 X 的新客"
+
+# 本维度为"计算属性"（无法从某张表的单字段直接取值），不填 source_table / sql_expr，
+# 通过 named_values 下的自包含子查询输出 uid IN (...) 的命名分群条件。
+
+named_values:
+  - value_id: "is_first_purchase_in_category"
+    name: "首购品类命中指定值"
+    description: |
+      在 [window_start, window_end] 内人生首购，且首单 ${category_field} = ${category_value} 的用户。
+      常用特化示例：
+        - 首购子账户为三分法：category_field=invest_account_code, category_value='TRICHOTOMY'
+        - 首购子账户为有知有行：category_field=invest_account_code, category_value='YZYX'
+        - 首购为组合产品：category_field=pro_type, category_value='ZH'
+    depends_on_events:
+      - fund_purchase
+    parameters:
+      window_start:
+        type: date
+        description: "首购窗口起点（含），如 DATE '2025-04-01'"
+      window_end:
+        type: date
+        description: "首购窗口终点（含），如 DATE '2025-05-31'"
+      category_field:
+        type: string
+        default: "invest_account_code"
+        description: "品类字段名，必须是 dwd_evt_parent_money_order_s 上存在的列（如 invest_account_code / pro_type / pro_code）"
+      category_value:
+        type: string
+        description: "品类取值，如 'TRICHOTOMY'、'ZH'、'F' 等"
+    sql_condition: |
+      uid IN (
+        WITH old_buyers AS (
+          SELECT DISTINCT uid
+          FROM fundx_dwd.dwd_evt_parent_money_order_s
+          WHERE dt < ${window_start}
+            AND is_private = 0
+            AND trade_mode IN (1, 2, 3, 4, 5)
+            AND substr(init_time, 1, 10) < CAST(${window_start} AS varchar)
+        ),
+        first_buy_in_range AS (
+          SELECT
+            uid,
+            ${category_field} AS category_value,
+            ROW_NUMBER() OVER (
+              PARTITION BY uid
+              ORDER BY init_time ASC, batch_order_serial_no ASC
+            ) AS rn
+          FROM fundx_dwd.dwd_evt_parent_money_order_s
+          WHERE dt BETWEEN ${window_start} AND ${window_end}
+            AND is_private = 0
+            AND trade_mode IN (1, 2, 3, 4, 5)
+            AND substr(init_time, 1, 10) BETWEEN CAST(${window_start} AS varchar) AND CAST(${window_end} AS varchar)
+        )
+        SELECT f.uid
+        FROM first_buy_in_range f
+        LEFT JOIN old_buyers o ON f.uid = o.uid
+        WHERE f.rn = 1
+          AND f.category_value = ${category_value}
+          AND o.uid IS NULL
+      )
+    aliases:
+      - "首购即命中品类的新客"
+      - "首购品类为 ${category_value} 的新客"
+
+  - value_id: "is_first_purchase_not_in_category"
+    name: "首购品类未命中指定值"
+    description: |
+      在 [window_start, window_end] 内人生首购，但首单 ${category_field} != ${category_value} 的用户。
+      用于反向分群（如"首购非三分法的新客"）。
+    depends_on_events:
+      - fund_purchase
+    parameters:
+      window_start:
+        type: date
+        description: "首购窗口起点（含）"
+      window_end:
+        type: date
+        description: "首购窗口终点（含）"
+      category_field:
+        type: string
+        default: "invest_account_code"
+        description: "品类字段名，必须是 dwd_evt_parent_money_order_s 上存在的列"
+      category_value:
+        type: string
+        description: "被反向排除的品类取值"
+    sql_condition: |
+      uid IN (
+        WITH old_buyers AS (
+          SELECT DISTINCT uid
+          FROM fundx_dwd.dwd_evt_parent_money_order_s
+          WHERE dt < ${window_start}
+            AND is_private = 0
+            AND trade_mode IN (1, 2, 3, 4, 5)
+            AND substr(init_time, 1, 10) < CAST(${window_start} AS varchar)
+        ),
+        first_buy_in_range AS (
+          SELECT
+            uid,
+            ${category_field} AS category_value,
+            ROW_NUMBER() OVER (
+              PARTITION BY uid
+              ORDER BY init_time ASC, batch_order_serial_no ASC
+            ) AS rn
+          FROM fundx_dwd.dwd_evt_parent_money_order_s
+          WHERE dt BETWEEN ${window_start} AND ${window_end}
+            AND is_private = 0
+            AND trade_mode IN (1, 2, 3, 4, 5)
+            AND substr(init_time, 1, 10) BETWEEN CAST(${window_start} AS varchar) AND CAST(${window_end} AS varchar)
+        )
+        SELECT f.uid
+        FROM first_buy_in_range f
+        LEFT JOIN old_buyers o ON f.uid = o.uid
+        WHERE f.rn = 1
+          AND f.category_value <> ${category_value}
+          AND o.uid IS NULL
+      )
+    aliases:
+      - "首购品类非 ${category_value} 的新客"
+
+notes:
+  - "本维度为'计算属性'，值无法从单一字段读取，只能通过 sql_condition 输出 uid 集合"
+  - |
+    '人生首购'口径：通过 old_buyers 反连接 window_start 之前全部历史父单分区，排除窗口前已有公募主动买入的用户；
+    若业务只想看'参与窗口内的首笔（不排除窗口前已买入）'，应删除 old_buyers 相关 CTE 与反连接
+  - "买入口径固定为 is_private=0 AND trade_mode IN (1,2,3,4,5)；不含赎回、迁入（action=327 三分法迁入父单不纳入）"
+  - "首单并列时以 init_time 升序、再以 batch_order_serial_no 升序作稳定打破；业务上并列概率极低"
+  - "category_field 仅支持 dwd_evt_parent_money_order_s 自有列；如需按 basi_type_name_trans / pro_name 等非自有列分群，需在模板中 JOIN 持仓或产品维表，目前不支持"
+  - |
+    性能提示：old_buyers 需扫描 window_start 之前全部父单分区（历史全量）。
+    一旦 dws_evt_parent_money_first_trade_s（fundx_dws）字段补齐，建议改写为：
+      SELECT uid
+      FROM fundx_dws.dws_evt_parent_money_first_trade_s
+      WHERE dt = <latest_partition>
+        AND first_purchase_date BETWEEN ${window_start} AND ${window_end}
+        AND <first_purchase_category_field> = ${category_value}
+    可将扫描量从 O(历史全量) 降到 O(单次 DWS 快照)
+  - "与 is_trichotomy_user 的区别：后者是'当前是否有三分法持仓'的快照维度，与'首购'语义无关；本维度聚焦'首购行为时刻的品类'"

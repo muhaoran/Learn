@@ -3,7 +3,7 @@
 - **日期**：2026-04-20
 - **缺失类型**：维度（业务命名分群） + 附带表字段缺失
 - **优先级**：高
-- **状态**：待处理
+- **状态**：处理中（主缺口已落盘为通用参数化维度 `first_purchase_category`，次缺口待补 DWS 字段）
 
 ---
 
@@ -146,8 +146,13 @@ notes:
 
 ## 完成情况
 
-- [ ] 已补充到知识库（或放入 `raw_knowledge/mixed/` 由 AI 处理）
-- [ ] 已验证 AI 可以正确处理相关需求
+- [x] 已补充到知识库：新增通用参数化维度 `knowledge/semantics/dimensions/first_purchase_category.yaml`
+      （覆盖"首购品类命中/未命中 + 可切换 category_field/category_value"的参数化分群；
+      `is_trichotomy_first_purchase_new_user` 作为其命名特化使用，暂不额外落盘）
+- [ ] 指标口径 `trichotomy_first_purchase_new_user_count` / `new_user_trichotomy_holding_amount`
+      应用侧决定暂不落盘（metrics 先不入库）
+- [ ] DWS 首购汇总表字段仍待补录；补录后维度内 `sql_condition` 可改写为对 DWS 的单表过滤
+- [ ] 已验证 AI 可以正确处理相关需求（待下一次同类需求复测）
 
 ## 关联工单
 
