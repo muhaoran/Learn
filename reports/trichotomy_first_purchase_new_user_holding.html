@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>三分法首购新客·人均持仓报告 (2025-04/05 → 2026-04-16)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: #1e293b;
+    --panel-2: #273449;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --primary: #38bdf8;
+    --accent: #a78bfa;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei",
+                 "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #0b1120 0%, #111c33 60%, #1a1036 100%);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 32px 24px 64px;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 16px; margin-bottom: 28px;
+  }
+  header .title { display: flex; align-items: center; gap: 14px; }
+  header .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 18px; color: #0f172a;
+    box-shadow: 0 8px 24px rgba(56,189,248,0.35);
+  }
+  h1 { font-size: 22px; margin: 0; font-weight: 600; letter-spacing: 0.5px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .tag {
+    display: inline-block; padding: 4px 10px; font-size: 12px;
+    border-radius: 999px; background: rgba(56,189,248,0.12);
+    color: var(--primary); border: 1px solid rgba(56,189,248,0.35);
+  }
+
+  .grid { display: grid; gap: 20px; }
+  .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 820px) { .kpi-grid { grid-template-columns: 1fr; } }
+
+  .card {
+    background: rgba(30,41,59,0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .card h2 {
+    font-size: 14px; margin: 0 0 10px; color: var(--muted);
+    font-weight: 500; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .card .value { font-size: 32px; font-weight: 700; letter-spacing: 0.5px; }
+  .card .value .unit { font-size: 14px; color: var(--muted); margin-left: 6px; }
+  .card .delta { margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .kpi.numerator .value { color: var(--success); }
+  .kpi.denominator .value { color: var(--primary); }
+  .kpi.avg .value { color: var(--accent); }
+
+  .section { margin-top: 28px; }
+  .section-title {
+    font-size: 16px; font-weight: 600; margin: 0 0 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ""; width: 4px; height: 16px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--primary), var(--accent));
+  }
+
+  .two-col { grid-template-columns: 1.1fr 0.9fr; }
+  @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid rgba(148,163,184,0.15);
+  }
+  th { color: var(--muted); font-weight: 500; background: rgba(148,163,184,0.05); }
+  tbody tr:hover { background: rgba(148,163,184,0.06); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  pre.code {
+    background: #0b1220; color: #e2e8f0;
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto;
+    font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.65; margin: 0;
+  }
+  .code .kw  { color: #c084fc; }
+  .code .str { color: #86efac; }
+  .code .num { color: #fcd34d; }
+  .code .cmt { color: #64748b; font-style: italic; }
+
+  .chart-wrap { position: relative; height: 280px; }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .badge {
+    font-size: 12px; padding: 4px 10px; border-radius: 999px;
+    background: rgba(148,163,184,0.1); color: var(--text);
+    border: 1px solid rgba(148,163,184,0.25);
+  }
+  .badge.ok { color: var(--success); border-color: rgba(52,211,153,0.4); background: rgba(52,211,153,0.1); }
+  .badge.warn { color: var(--warning); border-color: rgba(251,191,36,0.4); background: rgba(251,191,36,0.1); }
+
+  footer {
+    margin-top: 36px; padding-top: 18px;
+    border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 12px; text-align: center;
+  }
+  footer code { background: rgba(148,163,184,0.12); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="title">
+      <div class="logo">BI</div>
+      <div>
+        <h1>三分法首购新客 · 人均持仓分析</h1>
+        <div class="subtitle">
+          首购窗口 <b>2025-04-01 ~ 2025-05-31</b> &nbsp;·&nbsp;
+          持仓快照日 <b>2026-04-16</b>
+        </div>
+      </div>
+    </div>
+    <div>
+      <span class="tag">ChatBI Report</span>
+      <span class="tag" style="margin-left:6px;">示例数据 · Mock</span>
+    </div>
+  </header>
+
+  <!-- KPI -->
+  <section class="grid kpi-grid">
+    <div class="card kpi denominator">
+      <h2>分母 · 新客数</h2>
+      <div class="value" id="kpi-denom">12,456<span class="unit">人</span></div>
+      <div class="delta">25年4-5月首购品类为三分法（TRICHOTOMY）的去重新客</div>
+    </div>
+    <div class="card kpi numerator">
+      <h2>分子 · 三分法持仓总额</h2>
+      <div class="value" id="kpi-num">¥ 568,923,410.88</div>
+      <div class="delta">2026-04-16 快照，<code>invest_account_code='TRICHOTOMY' AND volume&gt;0</code> 的 SUM(amount)</div>
+    </div>
+    <div class="card kpi avg">
+      <h2>人均 · 新客三分法持仓</h2>
+      <div class="value" id="kpi-avg">¥ 45,674.56</div>
+      <div class="delta">= 分子 / NULLIF(分母, 0)</div>
+    </div>
+  </section>
+
+  <!-- Section: 趋势 & 分布 -->
+  <section class="section grid two-col">
+    <div class="card">
+      <h3 class="section-title">首购月 × 新客数（2025-04 / 2025-05）</h3>
+      <div class="chart-wrap"><canvas id="chart-cohort"></canvas></div>
+      <div class="badge-row">
+        <span class="badge">2025-04：5,842 人</span>
+        <span class="badge">2025-05：6,614 人</span>
+        <span class="badge ok">合计 12,456 人</span>
+      </div>
+    </div>
+    <div class="card">
+      <h3 class="section-title">2026-04-16 三分法持仓金额区间分布</h3>
+      <div class="chart-wrap"><canvas id="chart-bucket"></canvas></div>
+      <div class="badge-row">
+        <span class="badge warn">约 28% 新客当前已清仓 / 无三分法持仓</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Section: 指标参数 -->
+  <section class="section">
+    <h3 class="section-title">分子 / 分母指标参数（knowledge/metrics 视角）</h3>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap: 20px;">
+      <div class="card">
+        <h2>分母</h2>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">
+          trichotomy_first_purchase_new_user_count
+        </div>
+<pre class="code"><span class="cmt"># 首购品类为三分法的新客数</span>
+<span class="kw">metric_id</span>: <span class="str">"trichotomy_first_purchase_new_user_count"</span>
+<span class="kw">pattern</span>: <span class="str">"count_distinct"</span>
+<span class="kw">pattern_params</span>:
+  <span class="kw">entity</span>: <span class="str">"user"</span>            <span class="cmt"># primary_key = uid</span>
+  <span class="kw">event</span>:  <span class="str">"first_fund_purchase"</span>
+  <span class="kw">time_window</span>: <span class="str">"first_purchase_date BETWEEN DATE '2025-04-01' AND DATE '2025-05-31'"</span>
+  <span class="kw">where_dimension_values</span>:
+    - <span class="kw">dimension_id</span>: <span class="str">invest_account_code</span>
+      <span class="kw">value</span>: <span class="str">"TRICHOTOMY"</span></pre>
+        <div class="badge-row">
+          <span class="badge">pattern: count_distinct</span>
+          <span class="badge">entity: user</span>
+          <span class="badge">event: first_fund_purchase</span>
+        </div>
+      </div>
+      <div class="card">
+        <h2>分子</h2>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px;">
+          new_user_trichotomy_holding_amount
+        </div>
+<pre class="code"><span class="cmt"># 新客在快照日的三分法持仓金额</span>
+<span class="kw">metric_id</span>: <span class="str">"new_user_trichotomy_holding_amount"</span>
+<span class="kw">pattern</span>: <span class="str">"sum_metric"</span>              <span class="cmt"># 快照型</span>
+<span class="kw">pattern_params</span>:
+  <span class="kw">entity</span>: <span class="str">"user"</span>
+  <span class="kw">anchor_table</span>: <span class="str">"holding"</span>          <span class="cmt"># dwd_ast_pub_daily_holding_detail_i</span>
+  <span class="kw">sum_field</span>: <span class="str">"amount"</span>
+  <span class="kw">time_window</span>: <span class="str">"dt = DATE '2026-04-16'"</span>
+  <span class="kw">where_dimension_values</span>:
+    - <span class="kw">dimension_id</span>: <span class="str">invest_account_code</span>
+      <span class="kw">value</span>: <span class="str">"TRICHOTOMY"</span>
+  <span class="kw">where_named_values</span>:
+    - <span class="kw">sql_condition</span>: <span class="str">"uid IN (SELECT uid FROM new_tri_users)"</span>
+  <span class="kw">extra_conditions</span>:
+    - <span class="str">"volume &gt; 0"</span></pre>
+        <div class="badge-row">
+          <span class="badge">pattern: sum_metric (snapshot)</span>
+          <span class="badge">anchor: holding</span>
+          <span class="badge">sum_field: amount</span>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:20px;">
+      <h2>比值组合</h2>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">
+        avg_tri_holding_per_new_user
+      </div>
+<pre class="code">avg_tri_holding_per_new_user
+  = new_user_trichotomy_holding_amount
+  / <span class="kw">NULLIF</span>(trichotomy_first_purchase_new_user_count, <span class="num">0</span>)</pre>
+    </div>
+  </section>
+
+  <!-- Section: SQL -->
+  <section class="section">
+    <h3 class="section-title">最终 SQL（Trino）</h3>
+    <div class="card">
+<pre class="code"><span class="cmt">-- 首购落在 25-04 ~ 25-05 且首购品类=三分法的新客，截止 2026-04-16 的三分法人均持仓</span>
+<span class="kw">WITH</span>
+old_buyers <span class="kw">AS</span> (
+    <span class="kw">SELECT DISTINCT</span> uid
+    <span class="kw">FROM</span> fundx_dwd.dwd_evt_parent_money_order_s
+    <span class="kw">WHERE</span> dt &lt; <span class="kw">DATE</span> <span class="str">'2025-04-01'</span>
+      <span class="kw">AND</span> is_private = <span class="num">0</span>
+      <span class="kw">AND</span> trade_mode <span class="kw">IN</span> (<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>)
+      <span class="kw">AND</span> substr(init_time, <span class="num">1</span>, <span class="num">10</span>) &lt; <span class="str">'2025-04-01'</span>
+),
+first_buy_in_range <span class="kw">AS</span> (
+    <span class="kw">SELECT</span>
+        uid,
+        invest_account_code,
+        init_time,
+        <span class="kw">ROW_NUMBER</span>() <span class="kw">OVER</span> (
+            <span class="kw">PARTITION BY</span> uid
+            <span class="kw">ORDER BY</span> init_time <span class="kw">ASC</span>, batch_order_serial_no <span class="kw">ASC</span>
+        ) <span class="kw">AS</span> rn
+    <span class="kw">FROM</span> fundx_dwd.dwd_evt_parent_money_order_s
+    <span class="kw">WHERE</span> dt <span class="kw">BETWEEN</span> <span class="kw">DATE</span> <span class="str">'2025-04-01'</span> <span class="kw">AND</span> <span class="kw">DATE</span> <span class="str">'2025-05-31'</span>
+      <span class="kw">AND</span> is_private = <span class="num">0</span>
+      <span class="kw">AND</span> trade_mode <span class="kw">IN</span> (<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>)
+      <span class="kw">AND</span> substr(init_time, <span class="num">1</span>, <span class="num">10</span>) <span class="kw">BETWEEN</span> <span class="str">'2025-04-01'</span> <span class="kw">AND</span> <span class="str">'2025-05-31'</span>
+),
+new_tri_users <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> f.uid
+    <span class="kw">FROM</span> first_buy_in_range f
+    <span class="kw">LEFT JOIN</span> old_buyers o <span class="kw">ON</span> f.uid = o.uid
+    <span class="kw">WHERE</span> f.rn = <span class="num">1</span>
+      <span class="kw">AND</span> f.invest_account_code = <span class="str">'TRICHOTOMY'</span>
+      <span class="kw">AND</span> o.uid <span class="kw">IS NULL</span>
+),
+tri_holding_0416 <span class="kw">AS</span> (
+    <span class="kw">SELECT</span> uid, <span class="kw">SUM</span>(amount) <span class="kw">AS</span> tri_amount
+    <span class="kw">FROM</span> fundx_dwd.dwd_ast_pub_daily_holding_detail_i
+    <span class="kw">WHERE</span> dt = <span class="kw">DATE</span> <span class="str">'2026-04-16'</span>
+      <span class="kw">AND</span> invest_account_code = <span class="str">'TRICHOTOMY'</span>
+      <span class="kw">AND</span> volume &gt; <span class="num">0</span>
+    <span class="kw">GROUP BY</span> uid
+)
+<span class="kw">SELECT</span>
+    <span class="kw">COUNT</span>(<span class="kw">DISTINCT</span> u.uid)                                             <span class="kw">AS</span> denominator_new_user_cnt,
+    <span class="kw">COALESCE</span>(<span class="kw">SUM</span>(h.tri_amount), <span class="num">0</span>)                                    <span class="kw">AS</span> numerator_tri_holding_amt,
+    <span class="kw">COALESCE</span>(<span class="kw">SUM</span>(h.tri_amount), <span class="num">0</span>) / <span class="kw">NULLIF</span>(<span class="kw">COUNT</span>(<span class="kw">DISTINCT</span> u.uid), <span class="num">0</span>) <span class="kw">AS</span> avg_tri_holding_per_user
+<span class="kw">FROM</span> new_tri_users u
+<span class="kw">LEFT JOIN</span> tri_holding_0416 h <span class="kw">ON</span> h.uid = u.uid;</pre>
+    </div>
+  </section>
+
+  <!-- Section: 结果表 -->
+  <section class="section">
+    <h3 class="section-title">结果字段（示例数据）</h3>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>字段</th>
+            <th>含义</th>
+            <th class="num">值</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>denominator_new_user_cnt</code></td>
+            <td>分母：25年4-5月首购品类为三分法的新客数</td>
+            <td class="num">12,456</td>
+          </tr>
+          <tr>
+            <td><code>numerator_tri_holding_amt</code></td>
+            <td>分子：2026-04-16 三分法持仓金额合计（元）</td>
+            <td class="num">568,923,410.88</td>
+          </tr>
+          <tr>
+            <td><code>avg_tri_holding_per_user</code></td>
+            <td>人均三分法持仓（元）= 分子 ÷ 分母</td>
+            <td class="num">45,674.56</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Section: 注意 -->
+  <section class="section">
+    <h3 class="section-title">口径与注意事项</h3>
+    <div class="card" style="line-height:1.8; font-size:13.5px;">
+      <ul style="margin:0; padding-left:20px;">
+        <li><b>新客定义</b>：人生首购（最早一笔公募主动买入）落在 2025-04-01 ~ 2025-05-31，且首单 <code>invest_account_code='TRICHOTOMY'</code>。</li>
+        <li><b>买入口径</b>：<code>is_private=0 AND trade_mode IN (1,2,3,4,5)</code>；不含赎回、迁入（迁入单独在 <code>ods_fundx_order_asset_transfer_detail_s</code>）。</li>
+        <li><b>人均口径</b>：本次分母采用"全体新客"，包括已清仓者（贡献 0），反映整体留存金额水平；如只看"当前仍持仓新客"，改 <code>LEFT JOIN</code> 为 <code>INNER JOIN</code>。</li>
+        <li><b>有效持仓</b>：<code>volume &gt; 0</code>；避免纳入历史清零明细。</li>
+        <li><b>性能提示</b>：若知识库补齐 <code>dws_evt_parent_money_first_trade_s</code> 字段，前两段 CTE 可退化成一次 DWS 汇总查询。</li>
+        <li><b>数据说明</b>：本页数值为 <span style="color:var(--warning);">示例 / Mock 数据</span>，用于展示口径和指标结构，非真实业务结果。</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    Generated by ChatBI · branch <code>chatbi-0420</code> · 
+    <span id="gen-time"></span>
+  </footer>
+</div>
+
+<script>
+  document.getElementById('gen-time').textContent = new Date().toLocaleString('zh-CN');
+
+  const commonOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { labels: { color: '#cbd5e1', font: { size: 12 } } },
+      tooltip: {
+        backgroundColor: 'rgba(15,23,42,0.95)',
+        borderColor: '#334155', borderWidth: 1,
+        titleColor: '#f8fafc', bodyColor: '#e2e8f0'
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#94a3b8' },
+        grid:  { color: 'rgba(148,163,184,0.08)' }
+      },
+      y: {
+        ticks: { color: '#94a3b8' },
+        grid:  { color: 'rgba(148,163,184,0.08)' }
+      }
+    }
+  };
+
+  new Chart(document.getElementById('chart-cohort'), {
+    type: 'bar',
+    data: {
+      labels: ['2025-04', '2025-05'],
+      datasets: [{
+        label: '首购新客数',
+        data: [5842, 6614],
+        backgroundColor: ['rgba(56,189,248,0.7)', 'rgba(167,139,250,0.7)'],
+        borderColor: ['#38bdf8', '#a78bfa'],
+        borderWidth: 1.5,
+        borderRadius: 8,
+        barThickness: 70
+      }]
+    },
+    options: commonOpts
+  });
+
+  new Chart(document.getElementById('chart-bucket'), {
+    type: 'bar',
+    data: {
+      labels: ['0 (已清仓)', '0~1万', '1~5万', '5~20万', '20~100万', '>100万'],
+      datasets: [{
+        label: '新客数',
+        data: [3488, 2641, 3510, 1890, 780, 147],
+        backgroundColor: 'rgba(52,211,153,0.55)',
+        borderColor: '#34d399',
+        borderWidth: 1.5,
+        borderRadius: 6
+      }]
+    },
+    options: commonOpts
+  });
+</script>
+</body>
+</html>
