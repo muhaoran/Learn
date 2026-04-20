@@ -1,0 +1,22 @@
+entity_id: "xq_user"
+name: "雪球用户"
+description: "雪球社区侧的用户主体，以雪球用户 ID（xq_uid）为统一身份，COUNT DISTINCT 时优先使用 xq_uid。与蛋卷用户（user, dj_uid）通过 ID mapping 关联"
+
+primary_key: "xq_uid"
+
+id_aliases:
+  - "user_id"         # xq_ods.ods_usnowball_user_s_trans 等雪球侧表使用的 xq_uid 字段名
+  - "xq_uid"          # 映射表、画像表中的规范名
+  - "open_id"         # xq_ods.ods_usnowball_oauthuser_s_trans 中 source='dj' 时的 dj_uid 对端
+
+anchor_tables:
+  base_info: "xq_dwd.dwd_pat_xq_user_base_info_s"
+  raw_alive: "xq_ods.ods_usnowball_user_s_trans"
+  profile: "xq_dws.dws_pat_xq_user_profile_s"
+
+aliases:
+  - "雪球用户"
+  - "xq_uid"
+  - "user_id"
+  - "社区用户"
+  - "snowball user"

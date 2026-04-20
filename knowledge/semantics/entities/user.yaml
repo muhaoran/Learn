@@ -12,6 +12,7 @@ anchor_tables:
   register_source: "data_product.product_fund_uid_register_source_cleaning_s"
   dmp_attribute: "data_center.center_user_dj_offline_attribute_s"
   base_info: "fundx_dwd.dwd_pat_user_info_s"
+  label: "fundx_dm.dm_lm_cu_djuser_label"
 
 aliases:
   - "用户"
